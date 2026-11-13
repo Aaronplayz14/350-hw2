@@ -19,7 +19,7 @@ namespace ECSEngine {
  * therefore detect a fresh press by checking keydown[key] && !lastKeydown[key].
  *
  * The timer fields are owned by InputSystem:
- * - lastDash counts down the one-second dash cooldown.
+ * - lastDash counts down the 60-frame dash cooldown (about two seconds at 30 FPS).
  * - dashTimer keeps the high dash speed alive for a few frames instead of
  *   letting the normal run-speed clamp cancel it immediately.
  * - wallSlideSoundTimer rate-limits the wall-slide sound while the player is

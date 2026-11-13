@@ -74,7 +74,9 @@ the current collision box are offsets from that origin. The saved previous
 collision box is already in world coordinates. World positions use positive
 x to the right and positive y downward. Movement is world units per frame,
 acceleration is velocity change per frame, and gameplay timers count frames.
-The 60 FPS limit is a target, not a delta-time simulation.
+The 30 FPS limit is a target, not a delta-time simulation. Movement constants
+and frame-counted timers are unchanged, so gameplay runs slower and timers
+last longer in real time than at the former 60 FPS cap.
 
 WindowManager's point/rectangle conversions include center translation and
 scale; scalar conversions scale lengths only. Set a positive world-units-per-

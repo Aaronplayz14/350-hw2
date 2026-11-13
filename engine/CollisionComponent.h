@@ -33,8 +33,8 @@ struct CollisionComponent {
  * Lowercase x is the spike/saw hazard in world.map. Its supplied rectangle
  * overhangs the sprite by one pixel on both sides; clip it to the tile so a
  * player sliding beside the neighboring wall cannot touch invisible edges.
- * Uppercase X retains the existing damage behavior. Other solids use their
- * dictionary bounds unchanged.
+ * Spike respawning is disabled: map tiles remain solid but do not deal
+ * damage. Other solids use their dictionary bounds unchanged.
  *
  * @param symbol Map dictionary character.
  * @param bounds Entity-relative dictionary hitbox.
@@ -47,7 +47,7 @@ inline CollisionComponent MakeMapCollision(char symbol, const Rect& bounds,
                                            float tileWidth, float tileHeight) {
     CollisionComponent collision{};
     collision.staticEntity = 1;
-    collision.doesDamage = symbol == 'x' || symbol == 'X';
+    collision.doesDamage = 0;
     collision.collisionBox = bounds;
     if (symbol == 'x') {
         const float left = std::clamp(bounds.topLeft.x, 0.0F, tileWidth);

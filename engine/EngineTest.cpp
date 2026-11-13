@@ -601,7 +601,7 @@ void TestStarSettlingAndShake() {
 
 //-----------------------------------------------------------------------
 /**
- * @brief Reproduces spike-side ledges, false head hits, and solid-spike trapping.
+ * @brief Checks spike-side ledges, false head hits, and disabled spike respawning.
  *
  * Uses the real world.map dictionary hitbox and the loader's collision factory.
  * Exercises both wall sides and player contact from above, below, and beside
@@ -622,12 +622,12 @@ void TestSpikeWallContacts() {
         RespawnComponent, ScoreComponent, CameraComponent, CameraShake, SpawnComponent>;
     const Rect spikeDictionary(-1.0F, 10.0F, 66.0F, 44.0F);
     const auto spike = MakeMapCollision('x', spikeDictionary, 64.0F, 64.0F);
-    Check(spike.doesDamage, "lowercase map spikes are damaging hazards");
+    Check(!spike.doesDamage, "lowercase map spikes no longer trigger damage respawning");
     Check(spike.collisionBox.topLeft == Point2D(0.0F, 10.0F) &&
           spike.collisionBox.width == 64.0F && spike.collisionBox.height == 44.0F,
           "spike hitbox keeps the dictionary inset without invisible side overhangs");
-    Check(MakeMapCollision('X', Rect(0.0F, 0.0F, 64.0F, 64.0F), 64.0F, 64.0F).doesDamage,
-          "uppercase X retains existing damage behavior");
+    Check(!MakeMapCollision('X', Rect(0.0F, 0.0F, 64.0F, 64.0F), 64.0F, 64.0F).doesDamage,
+          "uppercase X map tiles no longer trigger damage respawning");
     const auto addEntity = [](auto& entities, const std::string& name,
                               const Point2D& position, const CollisionComponent& collision) {
         const EntityID id = entities.CreateEntity(name);
@@ -670,6 +670,8 @@ void TestSpikeWallContacts() {
                               Point2D(70.0F, 110.0F)};
     const Point2D velocities[] = {Point2D(0.0F, 10.0F), Point2D(0.0F, -12.0F),
                                   Point2D(-12.0F, 0.0F)};
+    const Point2D resolved[] = {Point2D(8.0F, 46.0F), Point2D(8.0F, 154.0F),
+                                Point2D(64.0F, 110.0F)};
     for (int side = 0; side < 3; ++side) {
         View view;
         auto& entities = view.GetEntityManager();
@@ -678,10 +680,10 @@ void TestSpikeWallContacts() {
         entities.AddComponent<MovementComponent>(player, MovementComponent{velocities[side]});
         entities.AddComponent<RespawnComponent>(player, RespawnComponent{spawn});
         tick(view);
-        Check(entities.GetComponent<LocationComponent>(player).loc == spawn,
-              "actual spike contact respawns player from every tested direction");
+        Check(entities.GetComponent<LocationComponent>(player).loc == resolved[side],
+              "spike contact resolves locally instead of sending player to spawn");
         Check(entities.GetComponent<MovementComponent>(player).velocity == Point2D(),
-              "spike respawn clears velocity instead of trapping player");
+              "solid spikes stop movement on the contacted face");
     }
 }
 

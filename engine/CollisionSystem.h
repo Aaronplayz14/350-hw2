@@ -201,7 +201,7 @@ private:
     //-------------------------------------------------------------------
     /**
      * @brief Chooses a collision face from saved world bounds and crossing times.
-     * Preserves established floor/ceiling support across tile seams and uses
+     * Preserves established surface contact across tile seams and uses
      * least penetration when the entity already overlaps the tile.
      *
      * @param dynamicCollision Contains the previous world-space collision box.
@@ -225,6 +225,19 @@ private:
             std::fabs(previousBounds.topLeft.y -
                       (staticBounds.topLeft.y + staticBounds.height)) <= kSideEpsilon) {
             return CollisionSide::Bottom;
+        }
+        // Input may keep pressing into a contacted wall while the player
+        // slides or jumps. Crossing a coplanar wall tile's vertical boundary
+        // must not turn that wall into a floor or ceiling.
+        if (previousFlags.onRightWall && deltaX >= 0.0F &&
+            std::fabs(previousBounds.topLeft.x + previousBounds.width -
+                      staticBounds.topLeft.x) <= kSideEpsilon) {
+            return CollisionSide::Left;
+        }
+        if (previousFlags.onLeftWall && deltaX <= 0.0F &&
+            std::fabs(previousBounds.topLeft.x -
+                      (staticBounds.topLeft.x + staticBounds.width)) <= kSideEpsilon) {
+            return CollisionSide::Right;
         }
         float firstContact = -1.0F;
         CollisionSide enteredSide = CollisionSide::Top;

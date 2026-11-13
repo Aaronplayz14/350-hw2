@@ -13,7 +13,7 @@ const float kJumpVelocity = 25;
 const float kWallJumpVelocity = 25;
 const float kGroundRunAcceleration = 5;
 const float kAirRunAcceleration = 4;
-const float kDashInterval = 60;         // frames between dashes (about one second)
+const float kDashInterval = 60;         // frames between dashes (about two seconds at 30 FPS)
 const float kDashDuration = 10;         // frames the dash keeps its high speed
 const float kWallSlideVelocity = 5;     // fall-speed cap while pushing into a wall
 const float kFastFallAcceleration = 2;  // extra downward acceleration while Down is held
@@ -64,7 +64,7 @@ public:
             CollisionComponent& collisionComponent = entities.template GetComponent<CollisionComponent>(id);
             MovementComponent& movementComponent = entities.template GetComponent<MovementComponent>(id);
 
-            // Dash and wall-slide sound timers use frames at a target 60 FPS.
+            // Dash and wall-slide sound timers use frames at a target 30 FPS.
             if (inputComponent.lastDash > 0) {
                 --inputComponent.lastDash;
             }
@@ -187,7 +187,7 @@ public:
             }
 
             if (inputComponent.keydown[Key::C] && !inputComponent.lastKeydown[Key::C]) {
-                // Dash on a fresh C press, with a one-second
+                // Dash on a fresh C press, with a 60-frame
                 // cooldown. The dash timer keeps the high speed from being
                 // clamped by the run-speed code above.
                 if (inputComponent.lastDash <= 0) {

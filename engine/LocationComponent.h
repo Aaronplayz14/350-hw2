@@ -19,7 +19,7 @@ struct LocationComponent {
 };
 
 struct MovementComponent {
-    Point2D velocity;  // World units per simulation frame (the game targets 60 FPS)
+    Point2D velocity;  // World units per simulation frame (the game targets 30 FPS)
 };
 
 struct GravityComponent {

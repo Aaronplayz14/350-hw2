@@ -147,7 +147,7 @@ private:
  * @brief Opens the window and prepares the engine for its main loop.
  *
  * Creates the window through WindowManager, disables key repeat so each
- * physical press produces one key-down event, and caps the loop at 60 frames
+ * physical press produces one key-down event, and caps the loop at 30 frames
  * per second. Window creation happens before any systems are added, so a
  * failed window is visible immediately rather than after setup.
  *
@@ -165,7 +165,7 @@ ECSEngine<Components...>::ECSEngine(unsigned int width, unsigned int height,
     if (auto window = mWindowManager.GetWindow()) {
         // One key-down event per physical press is what InputComponent expects.
         window->setKeyRepeatEnabled(false);
-        window->setFramerateLimit(60);
+        window->setFramerateLimit(30);
     }
 }
 

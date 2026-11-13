@@ -37,14 +37,14 @@ Successful local macOS checks do not establish lab compatibility.
 | Left / Right | Accelerate horizontally, including in the air |
 | Z | Jump; release early for a shorter jump |
 | Z while pressing into a wall and falling | Wall jump |
-| C | Dash with a roughly one-second cooldown |
+| C | Dash with a 60-frame cooldown (roughly two seconds at 30 FPS) |
 | Down | Faster falling |
 | Escape | Close the game |
 | F1 | Toggle collision-box debug drawing |
 | P | Pause/resume simulation |
 | N | Advance one simulation frame and remain paused |
 
-Movement and timers are frame-based, with a target of 60 FPS. One spawner
+Movement and timers are frame-based, with a target of 30 FPS. One spawner
 creates stars with random initial directions. Stars pass through its tile,
 but the player collides with it. Each collected star adds 10 points; three
 screen-space digit entities display a value clamped to 000-999. Stars lose
@@ -62,7 +62,7 @@ Run from the repository root so asset-dependent checks can find `assets/`.
 The test executable covers component storage, entity lifetimes and id reuse,
 system order/exit handling, sound/sprite ownership, score digits, star
 settling, lost support, spawner interactions, spike-side wall slides and
-spike damage from several directions, floor-seam landings and direction
+non-respawning spike contacts from several directions, floor-seam landings and direction
 changes after landing, and shake samples. It returns
 nonzero on a failed check. Expected missing-file messages exercise resource
 failure handling. Some asset success checks skip when assets cannot be found;
