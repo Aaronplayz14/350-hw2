@@ -285,9 +285,11 @@ int main(int argc, char* argv[]) {
     }
 
     auto& entities = engine.GetEntityManager();
-    const ECSEngine::Point2D playerSpawn(128.0f, 576.0f);
+    // Start over the middle of the map so the initial camera shows the full
+    // width of the left half of the level instead of off-map space.
+    const ECSEngine::Point2D playerSpawn(512.0f, 448.0f);
 
-    // Place the player in the first open column above the floor.
+    // Place the player above the floor in an open column.
     const ECSEngine::EntityID player = entities.CreateEntity("player");
     entities.AddComponent<ECSEngine::LocationComponent>(player,
                                                         ECSEngine::LocationComponent{playerSpawn});
