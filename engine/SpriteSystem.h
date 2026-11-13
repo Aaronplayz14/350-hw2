@@ -6,16 +6,24 @@
 
 namespace ECSEngine {
 
-// Draws every live entity that has a SpriteComponent.
-//
-// World-space sprites are offset by the entity's LocationComponent and then
-// converted to window coordinates through the WindowManager.  Screen-space
-// sprites are drawn directly in window coordinates.  The sprite's source
-// rectangle comes from SpriteManager; SpriteComponent::bounds controls where
-// (and at what size) the source image is drawn.
-//
-// This system clears the window, draws all sprites, and finally calls display(),
-// so it is expected to be the last drawing system in the frame.
+//-----------------------------------------------------------------------
+/**
+ * @brief Draws every live entity that has a SpriteComponent.
+ *
+ * World-space sprites are offset by the entity's LocationComponent and then
+ * converted to window coordinates through WindowManager. Screen-space sprites
+ * (the score display, for example) are drawn directly in window coordinates.
+ * The source rectangle comes from SpriteManager, while
+ * SpriteComponent::bounds controls where and at what size the image is drawn.
+ *
+ * This system clears the window, draws all sprites, and finally calls
+ * display(), so it is expected to be the last drawing system in the frame.
+ * Components whose texture id is invalid are skipped rather than throwing, so
+ * a partially constructed scene still renders.
+ *
+ * Implemented with the help of AI.
+ */
+//-----------------------------------------------------------------------
 template <typename... Components>
 class SpriteSystem : public System<Components...> {
 public:
@@ -24,6 +32,18 @@ public:
         return name;
     }
 
+    //-------------------------------------------------------------------
+    /**
+     * @brief Draws one frame of sprites and presents the window.
+     *
+     * Bounds are relative to the entity location. A zero width or height in
+     * SpriteComponent::bounds means "use the texture's natural pixel size";
+     * otherwise the sprite is scaled to the requested box.
+     *
+     * @param engine Engine view providing the window, entities, and sprites.
+     * @return kContinue; drawing never requests an engine exit.
+     */
+    //-------------------------------------------------------------------
     tSystemReturn Run(EngineView<Components...>* engine) override {
         WindowManager& windowManager = engine->GetWindowManager();
         auto window = windowManager.GetWindow();

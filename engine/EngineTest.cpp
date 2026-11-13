@@ -20,6 +20,22 @@
 #include "SpriteManager.h"
 #include "SystemManager.h"
 
+//-----------------------------------------------------------------------
+/**
+ * @brief Regression tests for the engine and ECS core.
+ *
+ * The suite covers the component storage, entity/component lifecycle, system
+ * execution order and exit handling, sound and sprite ownership, and score
+ * digit updates. Tests that need image or audio assets skip their success path
+ * when the assets cannot be found, so the suite still runs from any of the
+ * usual build/launch directories.
+ *
+ * Every check records a failure instead of aborting, which lets one run report
+ * all broken behaviours rather than only the first one.
+ *
+ * Implemented with the help of AI.
+ */
+//-----------------------------------------------------------------------
 namespace {
 
 int gFailures = 0;
@@ -73,6 +89,15 @@ struct Health {
     int value = 0;
 };
 
+//-----------------------------------------------------------------------
+/**
+ * @brief Verifies dense storage, removal, and free-list reuse.
+ *
+ * Checks that slot indices count up, removed slots become invalid without
+ * disturbing their neighbours, and the next Add reuses a free slot instead of
+ * growing capacity.
+ */
+//-----------------------------------------------------------------------
 void TestComponentStorage() {
     ECSEngine::ComponentStorage<int> storage;
     Check(storage.Empty(), "new component storage is empty");
@@ -105,6 +130,14 @@ void TestComponentStorage() {
     Check(storage.Capacity() == 2, "capacity is retained after removals");
 }
 
+//-----------------------------------------------------------------------
+/**
+ * @brief Verifies entity creation, component ownership, removal, and id reuse.
+ *
+ * Exercises component add/replace/remove, entity removal clearing all of its
+ * components, iteration over invalid slots, and reuse of freed entity ids.
+ */
+//-----------------------------------------------------------------------
 void TestEntityManager() {
     using Manager = ECSEngine::EntityManager<Position, Velocity, Health>;
     Manager manager;
@@ -187,6 +220,15 @@ void TestEntityManager() {
     Check(manager.GetActiveEntityCount() == 0, "removing all entities leaves none active");
 }
 
+//-----------------------------------------------------------------------
+/**
+ * @brief Minimal EngineView used by the system-manager tests.
+ *
+ * The window manager is deliberately never constructed because doing so would
+ * open an OS window during a unit test. These tests only need the system
+ * manager, so GetWindowManager is never called.
+ */
+//-----------------------------------------------------------------------
 template <typename... Components>
 class TestEngineView : public ECSEngine::EngineView<Components...> {
 public:
@@ -207,6 +249,11 @@ private:
     ECSEngine::WindowManager* mWindowManager = nullptr;
 };
 
+//-----------------------------------------------------------------------
+/**
+ * @brief Test system that records its name and returns a configured result.
+ */
+//-----------------------------------------------------------------------
 class RecordingSystem : public ECSEngine::System<int> {
 public:
     RecordingSystem(std::string name, std::vector<std::string>* order,
@@ -226,6 +273,14 @@ private:
     ECSEngine::tSystemReturn mResult;
 };
 
+//-----------------------------------------------------------------------
+/**
+ * @brief Verifies system ordering, clearing, and kExit handling.
+ *
+ * Systems must run in insertion order, and a system returning kExit must stop
+ * the manager before later systems receive their turn.
+ */
+//-----------------------------------------------------------------------
 void TestSystemManager() {
     TestEngineView<int> view;
     ECSEngine::SystemManager<int> manager;
@@ -254,6 +309,14 @@ void TestSystemManager() {
           "systems after an exiting system do not run");
 }
 
+//-----------------------------------------------------------------------
+/**
+ * @brief Verifies sound registration, replacement, lookup, and volume.
+ *
+ * Error paths are checked with missing files and empty names. The success path
+ * needs an .ogg asset and is skipped when the asset is not available.
+ */
+//-----------------------------------------------------------------------
 void TestSoundManager() {
     ECSEngine::SoundManager manager;
 
@@ -294,6 +357,15 @@ void TestSoundManager() {
     }
 }
 
+//-----------------------------------------------------------------------
+/**
+ * @brief Verifies texture registration, source rectangles, and sprite ids.
+ *
+ * The same texture path must be loaded once while producing separate sprite
+ * ids and sprite instances. The success path is skipped when the sprite sheet
+ * is not available.
+ */
+//-----------------------------------------------------------------------
 void TestSpriteManager() {
     ECSEngine::SpriteManager manager;
 
@@ -338,6 +410,14 @@ void TestSpriteManager() {
     }
 }
 
+//-----------------------------------------------------------------------
+/**
+ * @brief Verifies score digit extraction, clamping, and negative handling.
+ *
+ * A three-digit display must show leading zeroes, clamp values above 999 to
+ * 999, and display negative scores as zero.
+ */
+//-----------------------------------------------------------------------
 void TestScoreSystem() {
     using Manager =
         ECSEngine::EntityManager<ECSEngine::ScoreComponent, ECSEngine::SpriteComponent,
@@ -396,6 +476,12 @@ void TestScoreSystem() {
 
 }  // namespace
 
+//-----------------------------------------------------------------------
+/**
+ * @brief Runs every core test and reports the number of failures.
+ * @return 0 when all checks passed, 1 otherwise.
+ */
+//-----------------------------------------------------------------------
 int main(int argc, char* argv[]) {
     (void)argc;
     (void)argv;

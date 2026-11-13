@@ -3,19 +3,28 @@
 #include <cstddef>
 #include <string>
 
-// An entity is a lightweight handle: it owns an id, a display/type name and a
-// validity bit.  All component data lives in the EntityManager's component
-// storages, so copying an Entity never copies gameplay data.
-//
-// Entity ids are stable indices into the EntityManager's entity vector.  A
-// removed entity leaves an invalid slot behind; iterators therefore visit both
-// live and dead entities and callers must check IsValid() (or use the manager's
-// IsValid(EntityID)) before touching a component.
-
 namespace ECSEngine {
 
 using EntityID = std::size_t;
 
+//-----------------------------------------------------------------------
+/**
+ * @brief Lightweight handle to an entity managed by EntityManager.
+ *
+ * An Entity owns only an id, a display/type name, and a validity bit. All
+ * gameplay data lives in the EntityManager's component storages, so copying an
+ * Entity never copies components or sprites.
+ *
+ * Entity ids are stable indices into the manager's entity vector. Removing an
+ * entity marks its slot invalid instead of erasing it, which keeps every
+ * existing id a valid index. Iterators therefore visit both live and dead
+ * slots, and callers must check IsValid() (or EntityManager::IsValid) before
+ * reading a component.
+ *
+ * Construction is private because only EntityManager may create handles;
+ * gameplay code receives an EntityID and asks the manager for the data.
+ */
+//-----------------------------------------------------------------------
 class Entity {
 public:
     Entity(const Entity&) = default;
@@ -23,17 +32,24 @@ public:
     Entity& operator=(const Entity&) = default;
     Entity& operator=(Entity&&) noexcept = default;
 
+    /// @brief Stable id used to look the entity up in the manager.
     EntityID GetID() const { return mID; }
 
-    // The name supplied when the entity was created.  The manager assumes that
-    // names are unique, but does not enforce it.
+    /// @brief Name supplied when the entity was created.
+    ///
+    /// The manager assumes names are unique, but does not enforce it; names are
+    /// intended for debugging and for distinguishing objects such as "player"
+    /// and "star".
     const std::string& GetName() const { return mType; }
 
-    // Alias kept for code that calls the name the entity's type.
+    /// @brief Alias kept for code that calls the name the entity's type.
     const std::string& GetType() const { return mType; }
 
-    // False once the entity has been removed.  Removed ids may be reused by a
-    // later CreateEntity call.
+    /// @brief False once the entity has been removed.
+    ///
+    /// A removed id may be reused by a later CreateEntity call, at which point
+    /// the slot becomes valid again with the new entity's name and no
+    /// components.
     bool IsValid() const { return mValid; }
 
 private:
