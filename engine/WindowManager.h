@@ -56,9 +56,9 @@ public:
     /// @brief Converts a pixel point back into world coordinates.
     Point2D WindowToWorld(const Point2D& pt) const;
 
-    /// @brief Draws a filled rectangle in SFML window coordinates; channels are 0..255.
+    /// @brief Converts a world rectangle to screen coordinates and fills it; channels are 0..255.
     void DebugDrawRect(const Rect& r, int red, int green, int blue, int alpha = 255);
-    /// @brief Draws a window-coordinate outline; caller presents the frame afterward.
+    /// @brief Converts a world rectangle and draws its outline; caller presents afterward.
     void DebugFrameRect(const Rect& r, int red, int green, int blue, int alpha = 255);
 
 private:

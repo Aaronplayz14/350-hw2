@@ -7,8 +7,8 @@ SFML 3.1.0. The game loads `assets/sky.map` for the background and
 ## Build and run
 
 Run these commands from the repository root. CMake 3.28 or newer and a C++20
-compiler are required. The version-8 `CMakePresets.json` requires a newer CMake
-than the project's minimum, so the commands below do not depend on presets.
+compiler are required. The version-8 `CMakePresets.json` is also supported by
+CMake 3.28 or newer; the commands below work without using presets.
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
@@ -37,7 +37,7 @@ Successful local macOS checks do not establish lab compatibility.
 | Left / Right | Accelerate horizontally, including in the air |
 | Z | Jump; release early for a shorter jump |
 | Z while pressing into a wall and falling | Wall jump |
-| C | Dash with a 60-frame cooldown (roughly two seconds at 30 FPS) |
+| C | Dash with a 30-frame cooldown (roughly one second at 30 FPS) |
 | Down | Faster falling |
 | Escape | Close the game |
 | F1 | Toggle collision-box debug drawing |
@@ -51,6 +51,12 @@ screen-space digit entities display a value clamped to 000-999. Stars lose
 energy on collisions, slide to a stop on floors, and fall if support is lost.
 The camera follows horizontally using hard/soft bands and applies a short,
 directional, fading shake on sufficiently strong new player impacts.
+The hand-placed extra star starts at (576, 192), outside the left boundary
+wall. It uses normal star physics and can be collected after getting over
+that wall. The supplied map files are unchanged.
+
+Rendering presents one completed frame per update, including when F1 is on.
+Collision outlines use the same camera conversion as world-space sprites.
 
 ## Checks
 
@@ -77,6 +83,8 @@ and lab-machine behavior still need interactive play checks.
 - [ABOUT.TXT](ABOUT.TXT): team contributions, implementation notes, and AI/resource credits.
 - [Resource usage and engine APIs](docs/RESOURCE_USAGE.md): ownership, reference
   lifetimes, system order, components, and extension rules.
+- [Requirements check](docs/REQUIREMENTS_CHECKLIST.md): rubric coverage and
+  remaining lab/interactive verification.
 - Headers and implementation files: Doxygen-style API comments using the
   separator, `@brief`, `@param`, and `@return` style of commit `076e36d`.
 

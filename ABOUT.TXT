@@ -3,8 +3,8 @@ CMPUT 350 - Project 2 (part 1)
 
 Team contributions
 ------------------
-The division below follows the implementation commits reachable from the
-Aaron branch. Files with contributions from both members remain shared work.
+The division below follows the implementation commits merged into main.
+Files with contributions from both members remain shared work.
 
 Aaron Chiu (Aaronplayz14)
 - Implemented the ECS core: component storage and type lookup, entity handles,
@@ -20,6 +20,8 @@ Aaron Chiu (Aaronplayz14)
   effects, star bounces/settling, respawning on damage, spawner filtering,
   camera shake, and regression checks (including bd71af5).
 - Added this submission documentation and corrected stale API/lifetime notes.
+- Separated component definitions into dedicated headers, corrected F1 frame
+  presentation, and moved the extra star outside the left wall.
 
 Travis Lee (Trav337)
 - Implemented WindowManager functionality and brought MathUtil functions
@@ -29,6 +31,12 @@ Travis Lee (Trav337)
   behavior (fbdf06d).
 - Implemented horizontal hard/soft camera-follow bands and their game-setup
   configuration (d60bf12), retained in the merged camera implementation.
+- Fixed wall-cling recognition (1e6f319) and tuned the dash cooldown/duration
+  and wall-slide speed for the traversal puzzles (504491d).
+- Corrected the system registration order (186f043) and WindowManager aspect-
+  ratio calculation (1f7b154). These newer main changes are preserved.
+- Corrected world-to-window conversion inside the WindowManager debug draw
+  functions (9f652d8). Engine overlays pass world bounds to this updated API.
 
 Shared code and comment attribution
 -----------------------------------
@@ -47,6 +55,8 @@ level setup, star spawning, gameplay extensions, collision refinements,
 star settling, and camera shake. AI also assisted with this documentation
 pass, reference-lifetime corrections, comment cleanup, and spike collision
 classification/hitbox fixes and floor-seam landing fixes with regression tests.
+AI assisted the dedicated component headers, F1 rendering correction,
+outside-wall star placement, and rubric documentation in the final review.
 
 Some AI-assisted extensions are in files containing Travis's original code;
 those files retain ordinary comments under the team's attribution convention.
@@ -82,14 +92,25 @@ Implementation notes
   Small velocities become zero, while gravity keeps checking floor support.
 - Camera follow retains Travis's hard/soft bands. Shake uses an independent
   display offset, a four-world-unit amplitude cap, and a 14-frame fade.
+- The frame cap is 30 FPS. Travis's movement settings are retained: dash
+  cooldown 30 frames (about one second), dash duration 15 frames, and wall-slide
+  speed cap 3 before gravity is applied. The frame cap is not a fixed timestep.
 - Contact snapshots run before input/movement; collision resolution follows
-  movement. Spawning currently runs before score/camera/render, so a new star
-  can be drawn immediately and starts physics on the next simulation frame.
+  movement. Travis's updated order runs spawning after SpriteSystem, so new
+  stars start physics and sprite rendering on the next simulation frame.
+- SpriteSystem draws into the back buffer. WindowManager converts debug boxes
+  into screen coordinates and the engine presents once after systems and overlays;
+  F1 no longer causes a second frame-rate-limit wait.
+- The extra test star starts outside the left wall at (576, 192), uses normal
+  star physics, and does not require any changes to the provided map layout.
 - Diagonal collisions use the later axis-entry time. Existing floor/ceiling
   support is preserved across coplanar tile seams, and resolved positions snap
   to the contacted surface so landing does not create false wall contacts.
-- Component structs are grouped in a few headers (for example, movement,
-  gravity, and respawn in LocationComponent.h); they are not all separate files.
+- All 11 rubric components have dedicated definition headers. RespawnComponent
+  from the longer assignment writeup also has its own header. CameraFollower
+  and CameraShake remain compatibility aliases for the corresponding
+  CameraFollowerComponent and CameraShakeComponent types; their layout and
+  behavior are unchanged.
 
 Verification and remaining manual checks
 ---------------------------------------
@@ -100,3 +121,4 @@ Local checks do not replace building/running on the lab machines, playing the
 provided traversal sections, listening to event sounds, or judging camera feel.
 The collision checks do not establish general continuous collision detection
 for arbitrary speeds, all corner configurations, or every possible map.
+docs/REQUIREMENTS_CHECKLIST.md records the coverage of the supplied rubric.

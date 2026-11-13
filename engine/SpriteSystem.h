@@ -16,8 +16,9 @@ namespace ECSEngine {
  * The source rectangle comes from SpriteManager, while
  * SpriteComponent::bounds controls where and at what size the image is drawn.
  *
- * This system clears the window, draws all sprites, and finally calls
- * display(), so it is expected to be the last drawing system in the frame.
+ * This system clears the window and draws all sprites. ECSEngine presents
+ * the frame once after optional debug drawing, so it is expected to be the
+ * last scene-drawing system in the frame.
  * Components whose texture id is invalid are skipped rather than throwing, so
  * a partially constructed scene still renders.
  *
@@ -34,7 +35,7 @@ public:
 
     //-------------------------------------------------------------------
     /**
-     * @brief Draws one frame of sprites and presents the window.
+     * @brief Clears the window and draws sprites into the frame's back buffer.
      *
      * Bounds are relative to the entity location. A zero width or height in
      * SpriteComponent::bounds means "use the texture's natural pixel size";
@@ -109,7 +110,6 @@ public:
             window->draw(sprite);
         }
 
-        window->display();
         return kContinue;
     }
 };

@@ -8,10 +8,15 @@
 #include <SFML/Window.hpp>
 
 #include "CameraComponent.h"
+#include "CameraFollowerComponent.h"
+#include "CameraShakeComponent.h"
 #include "CollisionComponent.h"
 #include "EntityManager.h"
 #include "InputComponent.h"
 #include "LocationComponent.h"
+#include "MovementComponent.h"
+#include "GravityComponent.h"
+#include "RespawnComponent.h"
 #include "MathUtil.h"
 #include "ScoreComponent.h"
 #include "SoundManager.h"
@@ -55,7 +60,8 @@ public:
  * ECSEngine creates the window, stores the entity, system, sprite, sound, and
  * window managers, and repeatedly runs the registered systems. The loop polls
  * SFML events (updating every InputComponent), then runs the systems in order.
- * SpriteSystem presents the frame; debug drawing happens after it when enabled.
+ * SpriteSystem draws the scene; the engine draws any debug overlays and then
+ * presents the completed frame exactly once.
  *
  * Engine-level controls:
  * - Escape closes the window.
@@ -123,7 +129,7 @@ private:
      *
      * Collision boxes are stored relative to the entity's location, so the
      * entity's LocationComponent (when present) is added before the box is
-     * converted and drawn.
+     * converted to window coordinates and drawn before the frame is presented.
      * @return None.
      */
     //-------------------------------------------------------------------
@@ -231,6 +237,7 @@ void ECSEngine<Components...>::Run() {
         if (mDebug) {
             DebugDraw();
         }
+        window->display();
     }
 }
 
@@ -355,9 +362,9 @@ void ECSEngine<Components...>::SetKeyState(unsigned int scancode, bool down) {
  * @brief Draws collision boxes over the current frame when debug mode is on.
  *
  * A CollisionComponent's box is relative to its entity, so the entity's
- * LocationComponent is added first. SpriteSystem normally presents the frame;
- * because debug rectangles are drawn afterward, this function presents once
- * more so the overlays become visible.
+ * LocationComponent is added first, then WindowManager converts the world
+ * bounds using the same camera as SpriteSystem. Run presents the scene and
+ * these overlays together, so F1 does not add another frame-rate-limit wait.
  *
  * Implemented with the help of AI.
  */
@@ -388,12 +395,11 @@ void ECSEngine<Components...>::DebugDraw() {
             box.topLeft.y += location.y;
         }
 
+        // WindowManager's debug API now accepts world bounds and converts
+        // them internally, matching Travis's latest implementation.
         mWindowManager.DebugFrameRect(box, 255, 0, 0, 255);
     }
 
-    // SpriteSystem normally presents the frame; debug drawing happens after it,
-    // so present once more to make the overlays visible.
-    window->display();
 }
 
 }  // namespace ECSEngine

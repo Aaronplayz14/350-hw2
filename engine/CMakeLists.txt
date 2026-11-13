@@ -31,9 +31,14 @@ set(ECS_ENGINE_FILES
 set(ECS_COMPONENT_FILES
     Component.h
     CameraComponent.h
+    CameraFollowerComponent.h
+    CameraShakeComponent.h
     CollisionComponent.h
     InputComponent.h
     LocationComponent.h
+    MovementComponent.h
+    GravityComponent.h
+    RespawnComponent.h
     ScoreComponent.h
     SpawnComponent.h
     SpriteComponent.h

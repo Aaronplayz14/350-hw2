@@ -74,26 +74,33 @@ the current collision box are offsets from that origin. The saved previous
 collision box is already in world coordinates. World positions use positive
 x to the right and positive y downward. Movement is world units per frame,
 acceleration is velocity change per frame, and gameplay timers count frames.
-The 30 FPS limit is a target, not a delta-time simulation. Movement constants
-and frame-counted timers are unchanged, so gameplay runs slower and timers
-last longer in real time than at the former 60 FPS cap.
+The 30 FPS limit is a target, not a delta-time simulation. Trav's current
+settings use a 30-frame dash cooldown, 15-frame dash duration, and a wall-slide
+cap of 3 before gravity. This review preserves those movement values.
 
 WindowManager's point/rectangle conversions include center translation and
 scale; scalar conversions scale lengths only. Set a positive world-units-per-
 pixel value before conversions. `SetWorldRect` expects the window's aspect
-ratio. Debug draw methods consume window coordinates and do not present the
-frame. Normal sprite rendering converts world-space rectangles first;
+ratio. Debug draw methods consume world coordinates and convert them internally;
+callers must not pre-convert those bounds. These methods do not present the
+frame. Normal sprite rendering converts world-space rectangles before drawing;
 screen-space score sprites bypass that conversion.
 
 | Component group | Data and consumer |
 | --- | --- |
-| Location, Movement, Gravity, Respawn | Origin, per-frame velocity/acceleration, respawn location; grouped in LocationComponent.h. `disabledTimer` is currently reserved and unused. |
+| Location, Movement, Gravity, Respawn | Origin, per-frame velocity/acceleration, respawn location; each has its own named header. `disabledTimer` is currently reserved and unused. |
 | Collision | Static/damage tags, contact flags, current local and previous world bounds, star resting status. Input reads the preceding collision pass's flags. |
 | Input | Current/previous key bitsets plus dash and wall-slide sound timers. Events update bitsets; InputSystem owns countdown updates. |
-| Camera, CameraFollower, CameraShake | Base pose and screen-space bands, non-owning target id, directional shake amplitude/duration. Grouped in CameraComponent.h. |
+| Camera, CameraFollowerComponent, CameraShakeComponent | Base pose and screen-space bands, non-owning target id, directional shake amplitude/duration; each has its own named header. CameraFollower and CameraShake are compatibility aliases. |
 | Sprite | Non-owning SpriteID, local draw bounds, world/screen-space flag. |
 | Score | Score value, numeral SpriteIDs, and three display EntityIDs. ScoreSystem skips missing display entities. |
 | Spawn | Spawner EntityID, supported type string, SpriteID, countdown, interval, and remaining event budget. |
+
+Every component is defined in its own header, including the additional
+RespawnComponent in the full assignment. LocationComponent.h and
+CameraComponent.h include their former companion headers for source
+compatibility; they no longer contain the companion definitions themselves.
+Component ids remain non-owning and this header split adds no runtime state.
 
 ## System execution
 
@@ -111,14 +118,16 @@ The current game executes the following sequence:
 4. GravitySystem applies acceleration and limits star downward speed.
 5. MovementSystem adds velocity to location.
 6. CollisionSystem resolves overlaps, collects stars, updates flags, and triggers effects.
-7. SpawnSystem creates ready stars after existing entities' physics pass.
-8. ScoreSystem changes numeric display sprite ids.
-9. CameraSystem updates horizontal following and samples a fading display shake.
-10. SpriteSystem clears, draws, and presents; engine debug overlays can present again.
+7. ScoreSystem changes numeric display sprite ids.
+8. CameraSystem updates horizontal following and samples a fading display shake.
+9. SpriteSystem clears and draws sprites into the back buffer.
+10. SpawnSystem creates ready stars, which begin physics and drawing next frame.
 
-This documents the actual registration order. The requirements place SpawnSystem
-after SpriteSystem; the current game registers it earlier so new stars render
-immediately. No order change is made by this documentation pass.
+This preserves Travis's updated registration order and matches the order in
+the assignment. After systems finish, the engine draws optional debug
+overlays and calls display() exactly once. Both sprites and collision outlines
+use the same world-to-window conversion, including camera following and shake.
+The render handoff avoids running the frame limiter twice when F1 is enabled.
 
 The engine pauses simulation while continuing to poll events; single-step runs
 one complete system sequence. Audio is accessed by registered names with

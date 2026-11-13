@@ -1,11 +1,11 @@
 #pragma once
 
-#include <bitset>
-#include <unordered_map>
-
 #include "MathUtil.h"
-#include <SFML/Graphics/Sprite.hpp>
-#include <SFML/Graphics/Texture.hpp>
+
+// Keep legacy includes working; each component is defined in its own header.
+#include "GravityComponent.h"
+#include "MovementComponent.h"
+#include "RespawnComponent.h"
 
 namespace ECSEngine {
 
@@ -15,22 +15,6 @@ namespace ECSEngine {
 // - sprite bounding boxes
 // - collision bounding boxes
 struct LocationComponent {
-    Point2D loc;
-};
-
-struct MovementComponent {
-    Point2D velocity;  // World units per simulation frame (the game targets 30 FPS)
-};
-
-struct GravityComponent {
-    GravityComponent(Point2D acceleration, int disabledTimer = 0)
-        : acceleration(acceleration), disabledTimer(disabledTimer) {}
-    Point2D acceleration;  // Velocity change per simulation frame
-    int disabledTimer;     // Reserved field; current GravitySystem does not consume it
-};
-
-// location for respawning
-struct RespawnComponent {
     Point2D loc;
 };
 

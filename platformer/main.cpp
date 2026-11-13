@@ -5,17 +5,22 @@
 #include <unordered_map>
 
 #include "CameraSystem.h"
+#include "CameraFollowerComponent.h"
+#include "CameraShakeComponent.h"
 #include "CollisionComponent.h"
 #include "CollisionLateSystem.h"
 #include "CollisionSystem.h"
 #include "ECSEngine.h"
 #include "EntityManager.h"
 #include "GravitySystem.h"
+#include "GravityComponent.h"
 #include "InputComponent.h"
 #include "InputSystem.h"
 #include "LocationComponent.h"
 #include "MathUtil.h"
 #include "MovementSystem.h"
+#include "MovementComponent.h"
+#include "RespawnComponent.h"
 #include "ScoreComponent.h"
 #include "ScoreSystem.h"
 #include "SpawnComponent.h"
@@ -344,11 +349,13 @@ int main(int argc, char* argv[]) {
     entities.AddComponent<ECSEngine::CameraFollower>(player,
                                                      ECSEngine::CameraFollower{player});
 
-    // Hand-place one star above the left-hand wall section. The requirement
-    // allows a test star outside the normal spawner path so wall jumping over
-    // the wall can be exercised immediately.
+    // The left boundary wall occupies column 10 (x = 640..704). Place the
+    // extra collectable in column 9, outside that wall, without editing the
+    // provided map layout or the star's normal physics.
     ECSEngine::SpawnSystem<COMPONENTS>::CreateStar(
-        entities, starSprite, ECSEngine::Point2D(704.0f, 384.0f),
+        entities, starSprite, ECSEngine::Point2D(
+            objectInfo.origin.x + 9.0f * objectInfo.tileWidth,
+            objectInfo.origin.y + 3.0f * objectInfo.tileHeight),
         ECSEngine::Point2D(0.0f, 0.0f));
 
     // Set up three screen-space digit entities for the score display. The
@@ -408,8 +415,8 @@ int main(int argc, char* argv[]) {
               << camera.position << " with " << entities.GetEntityCount() << " entities\n";
     std::cout << std::flush;
 
-    // Add all systems. SpriteSystem must be last because it clears and presents
-    // the frame.
+    // Preserve the current system order. SpriteSystem draws last; the engine
+    // adds debug overlays and presents the completed frame afterward.
     auto& sm = engine.GetSystemManager();
     sm.AddSystem(std::make_unique<ECSEngine::CollisionLateSystem<COMPONENTS>>());
     sm.AddSystem(std::make_unique<ECSEngine::InputSystem<COMPONENTS>>());
