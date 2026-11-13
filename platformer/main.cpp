@@ -375,9 +375,11 @@ int main(int argc, char* argv[]) {
         playerSpawn.x,
         objectInfo.origin.y + objectInfo.height * objectInfo.tileHeight * 0.5f);
     camera.worldUnitsPerPixel = 1.0f;
-    camera.hardExclusion = ECSEngine::Rect(0.0f, 0.0f, 0.0f, 0.0f);
-    camera.softExclusion = ECSEngine::Rect(0.0f, 0.0f, 0.0f, 0.0f);
-    camera.speed = 0.0f;
+    camera.hardExclusion = ECSEngine::Rect(ECSEngine::Point2D(windows.GetWindow()->getSize().x * 0.1f, 0.0f), 
+                                           ECSEngine::Point2D(windows.GetWindow()->getSize().x * 0.9f, windows.GetWindow()->getSize().y));
+    camera.softExclusion = ECSEngine::Rect(ECSEngine::Point2D(windows.GetWindow()->getSize().x * 0.3f, 0.0f), 
+                                           ECSEngine::Point2D(windows.GetWindow()->getSize().x * 0.7f, windows.GetWindow()->getSize().y));
+    camera.speed = 0.1f;
 
     const ECSEngine::EntityID cameraEntity = entities.CreateEntity("camera");
     entities.AddComponent<ECSEngine::CameraComponent>(cameraEntity, camera);

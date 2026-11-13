@@ -74,14 +74,21 @@ public:
 
                 const LocationComponent& locationComponent = entities.template GetComponent<LocationComponent>(idFol);
 
-                // TEMP (Travis): Tight horizontal tracking is deliberately kept
-                // here for now. The 10%/10-30%/center-40% follow bands still
-                // need to be folded into this update; y should stay fixed.
-                cameraComponent.position.x = locationComponent.loc.x;
+                Rect worldHard = windowManager.WindowToWorld(cameraComponent.hardExclusion);
+                Rect worldSoft = windowManager.WindowToWorld(cameraComponent.softExclusion);
 
-                // TEMP (Travis): SetWorldCenter expects the camera center in
-                // world coordinates. Keep that contract when adding the
-                // horizontal dead-zone and soft-follow behavior.
+                if (locationComponent.loc.x < worldHard.topLeft.x) {
+                    cameraComponent.position.x = locationComponent.loc.x + worldHard.width / 2;
+                } else if (locationComponent.loc.x > worldHard.topLeft.x + worldHard.width) {
+                    cameraComponent.position.x = locationComponent.loc.x - worldHard.width / 2;
+                } else if (locationComponent.loc.x < worldSoft.topLeft.x) {
+                    float distFromZone = cameraComponent.position.x - locationComponent.loc.x - worldSoft.width / 2;
+                    cameraComponent.position.x -= distFromZone * cameraComponent.speed;
+                } else if (locationComponent.loc.x > worldSoft.topLeft.x + worldSoft.width) {
+                    float distFromZone = locationComponent.loc.x - cameraComponent.position.x - worldSoft.width / 2;
+                    cameraComponent.position.x += distFromZone * cameraComponent.speed;
+                }
+
                 windowManager.SetWorldCenter(cameraComponent.position);
             }
         }
