@@ -75,19 +75,20 @@ public:
                     !entities.template HasComponent<LocationComponent>(idFol)) continue;
 
                 const LocationComponent& locationComponent = entities.template GetComponent<LocationComponent>(idFol);
+                const CollisionComponent& collisionComponent = entities.template GetComponent<CollisionComponent>(idFol);
 
                 Rect worldHard = windowManager.WindowToWorld(cameraComponent.hardExclusion);
                 Rect worldSoft = windowManager.WindowToWorld(cameraComponent.softExclusion);
 
                 if (locationComponent.loc.x < worldHard.topLeft.x) {
                     cameraComponent.position.x = locationComponent.loc.x + worldHard.width / 2;
-                } else if (locationComponent.loc.x > worldHard.topLeft.x + worldHard.width) {
-                    cameraComponent.position.x = locationComponent.loc.x - worldHard.width / 2;
+                } else if (locationComponent.loc.x + collisionComponent.collisionBox.width > worldHard.topLeft.x + worldHard.width) {
+                    cameraComponent.position.x = locationComponent.loc.x - worldHard.width / 2 + collisionComponent.collisionBox.width;
                 } else if (locationComponent.loc.x < worldSoft.topLeft.x) {
                     float distFromZone = cameraComponent.position.x - locationComponent.loc.x - worldSoft.width / 2;
                     cameraComponent.position.x -= distFromZone * cameraComponent.speed;
-                } else if (locationComponent.loc.x > worldSoft.topLeft.x + worldSoft.width) {
-                    float distFromZone = locationComponent.loc.x - cameraComponent.position.x - worldSoft.width / 2;
+                } else if (locationComponent.loc.x + collisionComponent.collisionBox.width > worldSoft.topLeft.x + worldSoft.width) {
+                    float distFromZone = locationComponent.loc.x - cameraComponent.position.x - worldSoft.width / 2 + collisionComponent.collisionBox.width;
                     cameraComponent.position.x += distFromZone * cameraComponent.speed;
                 }
 
