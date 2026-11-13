@@ -339,7 +339,7 @@ struct Rect {
         yUB = std::min(topLeft.y + height, other.topLeft.y + other.height);
 
         // Lower bounds above upper bounds means the boxes do not overlap.
-        if (xLB <= xUB && yLB <= yUB) {
+        if (xLB < xUB && yLB < yUB) {
             topLeft.x = xLB;
             topLeft.y = yLB;
             width = xUB - xLB;
