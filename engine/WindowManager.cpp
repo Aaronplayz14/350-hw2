@@ -12,18 +12,20 @@ Rect WindowManager::GetWindowBounds() const {
 }
 
 void WindowManager::DebugDrawRect(const Rect& r, int red, int green, int blue, int alpha) {
-    sf::RectangleShape rect({r.width, r.height});
+    Rect rWindow = WorldToWindow(r);
+    sf::RectangleShape rect({rWindow.width, rWindow.height});
     rect.setFillColor(sf::Color(red, green, blue, alpha));
-    rect.setPosition({r.topLeft.x, r.topLeft.y});
+    rect.setPosition({rWindow.topLeft.x, rWindow.topLeft.y});
     mWindow->draw(rect);
 }
 
 void WindowManager::DebugFrameRect(const Rect& r, int red, int green, int blue, int alpha) {
-    sf::RectangleShape rect({r.width, r.height});
+    Rect rWindow = WorldToWindow(r);
+    sf::RectangleShape rect({rWindow.width, rWindow.height});
     rect.setFillColor(sf::Color::Transparent);
     rect.setOutlineThickness(3);
     rect.setOutlineColor(sf::Color(red, green, blue, alpha));
-    rect.setPosition({r.topLeft.x, r.topLeft.y});
+    rect.setPosition({rWindow.topLeft.x, rWindow.topLeft.y});
     mWindow->draw(rect);
 }
 
