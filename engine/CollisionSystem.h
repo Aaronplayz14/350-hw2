@@ -16,9 +16,9 @@ namespace ECSEngine {
  * @brief Resolves static/dynamic collisions and player/star interactions.
  *
  * The pass snapshots and clears the previous frame's collision flags, stops
- * the player against static map tiles, bounces stars off those tiles, swaps
- * the velocity of two colliding stars, and collects a star when the player
- * touches it. Collection adds score and plays the gem sound.
+ * the player against static map tiles, bounces stars off those tiles and off
+ * each other while losing speed, and collects a star when the player touches
+ * it. Collection adds score and plays the gem sound.
  *
  * Implemented with the help of AI.
  */
@@ -138,9 +138,8 @@ public:
                             PlaySoundIfPresent(engine, "gem");
                         } else if (isStar1 && isStar2) {
                             // Separate two stars and swap their velocity along
-                            // the axis of least overlap.
-                            const float restitution = 0.85f;
-
+                            // the axis of least overlap. Both stars then lose
+                            // some speed, so repeated star collisions settle.
                             if (intersect.width < intersect.height) {
                                 const float halfOverlap = intersect.width * 0.5f;
                                 if (locationComponent1.loc.x <= locationComponent2.loc.x) {
@@ -157,9 +156,11 @@ public:
                                     entities.template GetComponent<MovementComponent>(id2);
 
                                 const float velocity1 = movementComponent1.velocity.x;
-                                movementComponent1.velocity.x =
-                                    movementComponent2.velocity.x * restitution;
-                                movementComponent2.velocity.x = velocity1 * restitution;
+                                movementComponent1.velocity.x = movementComponent2.velocity.x;
+                                movementComponent2.velocity.x = velocity1;
+
+                                DampStarVelocity(movementComponent1);
+                                DampStarVelocity(movementComponent2);
                             } else {
                                 const float halfOverlap = intersect.height * 0.5f;
                                 if (locationComponent1.loc.y <= locationComponent2.loc.y) {
@@ -176,9 +177,11 @@ public:
                                     entities.template GetComponent<MovementComponent>(id2);
 
                                 const float velocity1 = movementComponent1.velocity.y;
-                                movementComponent1.velocity.y =
-                                    movementComponent2.velocity.y * restitution;
-                                movementComponent2.velocity.y = velocity1 * restitution;
+                                movementComponent1.velocity.y = movementComponent2.velocity.y;
+                                movementComponent2.velocity.y = velocity1;
+
+                                DampStarVelocity(movementComponent1);
+                                DampStarVelocity(movementComponent2);
                             }
                         }
                     }
@@ -199,6 +202,24 @@ public:
     }
 
 private:
+    static constexpr float kStarBounceDamping = 0.85f;
+    static constexpr float kMinStarSpeed = 0.5f;
+
+    // Loses 15% of the star's speed on every collision. This applies to both
+    // axes, so a star sliding along a wall or floor also slows down instead of
+    // keeping the same tangential speed forever.
+    static void DampStarVelocity(MovementComponent& movementComponent) {
+        movementComponent.velocity.x *= kStarBounceDamping;
+        movementComponent.velocity.y *= kStarBounceDamping;
+
+        if (std::fabs(movementComponent.velocity.x) < kMinStarSpeed) {
+            movementComponent.velocity.x = 0.0f;
+        }
+        if (std::fabs(movementComponent.velocity.y) < kMinStarSpeed) {
+            movementComponent.velocity.y = 0.0f;
+        }
+    }
+
     // This is Travis's static/dynamic resolution with star bouncing and the
     // player landing sound added. Keeping it in one helper avoids duplicating
     // the same logic for the two static/dynamic orders.
@@ -224,8 +245,6 @@ private:
 
         const bool isPlayer = entities.GetEntity(dynamicID)->GetName() == "player";
         const bool isStar = entities.GetEntity(dynamicID)->GetName() == "star";
-        const float restitution = 0.85f;
-        const float minBounceSpeed = 0.5f;
 
         if (intersect.width < intersect.height) { // If horizontal intersection is less than vertical
 
@@ -245,11 +264,8 @@ private:
                     (dynamicLeft && movementComponent.velocity.x > 0.0f) ||
                     (!dynamicLeft && movementComponent.velocity.x < 0.0f);
                 if (movingIntoWall) {
-                    movementComponent.velocity.x =
-                        -movementComponent.velocity.x * restitution;
-                    if (std::fabs(movementComponent.velocity.x) < minBounceSpeed) {
-                        movementComponent.velocity.x = 0.0f;
-                    }
+                    movementComponent.velocity.x = -movementComponent.velocity.x;
+                    DampStarVelocity(movementComponent);
                 }
             } else {
                 movementComponent.velocity.x = 0;
@@ -278,11 +294,8 @@ private:
                     (dynamicAbove && movementComponent.velocity.y > 0.0f) ||
                     (!dynamicAbove && movementComponent.velocity.y < 0.0f);
                 if (movingIntoSurface) {
-                    movementComponent.velocity.y =
-                        -movementComponent.velocity.y * restitution;
-                    if (std::fabs(movementComponent.velocity.y) < minBounceSpeed) {
-                        movementComponent.velocity.y = 0.0f;
-                    }
+                    movementComponent.velocity.y = -movementComponent.velocity.y;
+                    DampStarVelocity(movementComponent);
                 }
             } else {
                 movementComponent.velocity.y = 0;

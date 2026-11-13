@@ -273,11 +273,11 @@ int main(int argc, char* argv[]) {
     ECSEngine::SpriteManager& sprites = engine.GetSpriteManager();
 
     // The star and spawner both come from the provided tile sheet. The star is
-    // the yellow collectable tile at grid cell (11, 6); the spawner tile keeps
-    // whatever sprite its map dictionary entry supplies.
+    // the collectable tile at grid cell (11, 5), counting from the top-left;
+    // the spawner tile keeps whatever sprite its map dictionary entry supplies.
     const ECSEngine::SpriteID starSprite = sprites.RegisterTexture(
         JoinPath(gResourcePath, "spritesheet-tiles-default.png"),
-        ECSEngine::Rect(704.0f, 384.0f, 64.0f, 64.0f));
+        ECSEngine::Rect(704.0f, 320.0f, 64.0f, 64.0f));
 
     MapInfo backgroundInfo;
     MapInfo objectInfo;

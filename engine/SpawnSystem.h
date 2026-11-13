@@ -20,9 +20,9 @@ namespace ECSEngine {
  * zero.
  *
  * Stars are ordinary dynamic entities: LocationComponent, MovementComponent,
- * CollisionComponent, and SpriteComponent. They intentionally do not get a
- * GravityComponent, so they travel in straight lines until CollisionSystem
- * bounces them off the map and off each other.
+ * CollisionComponent, SpriteComponent, and GravityComponent. Gravity pulls
+ * them down while CollisionSystem bounces them off the map and off each other,
+ * losing some speed with every collision.
  *
  * CreateStar() is public because the level also places one test star by hand
  * (outside the normal spawner path) to exercise wall jumping.
@@ -132,6 +132,10 @@ public:
 
         entities.template AddComponent<LocationComponent>(star, LocationComponent{location});
         entities.template AddComponent<MovementComponent>(star, MovementComponent{velocity});
+
+        // Stars fall like the player, then bounce off the level geometry.
+        entities.template AddComponent<GravityComponent>(
+            star, GravityComponent(Point2D(0.0f, 2.0f)));
 
         CollisionComponent collision{};
         collision.staticEntity = 0;
