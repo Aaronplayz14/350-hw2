@@ -138,9 +138,14 @@ bool LoadMap(Engine& engine, const std::string& path, const std::string& file, M
         stream >> definition.texturePath;
         stream >> definition.spriteRect.topLeft.x >> definition.spriteRect.topLeft.y >>
             definition.spriteRect.width >> definition.spriteRect.height;
-        stream >> definition.boundRect.topLeft.x >> definition.boundRect.topLeft.y >>
-            definition.boundRect.width >> definition.boundRect.height;
 
+        if (stream && info.type == 2) {
+            stream >> definition.boundRect.topLeft.x >> definition.boundRect.topLeft.y >>
+                definition.boundRect.width >> definition.boundRect.height;
+        }
+
+        // Type-1 sprites are background-only and the supplied sky map omits
+        // their unused bound rectangles, so only require the sprite rectangle.
         if (!stream) {
             std::cerr << "WARNING: malformed dictionary entry in " << fullPath << ": " << line
                       << '\n';
@@ -289,9 +294,13 @@ int main(int argc, char* argv[]) {
     }
 
     auto& entities = engine.GetEntityManager();
-    // Start over the middle of the map so the initial camera shows the full
-    // width of the left half of the level instead of off-map space.
-    const ECSEngine::Point2D playerSpawn(512.0f, 448.0f);
+    // The supplied world map starts its playable area at column 10. The old
+    // (512, 448) spawn was left of that wall, so the player fell outside the
+    // level. Start one tile above the first platform instead, with the player's
+    // feet resting on the row-10 floor.
+    const ECSEngine::Point2D playerSpawn(
+        objectInfo.origin.x + 12.0f * objectInfo.tileWidth,
+        objectInfo.origin.y + 9.0f * objectInfo.tileHeight);
 
     // Place the player above the floor in an open column.
     const ECSEngine::EntityID player = entities.CreateEntity("player");
@@ -360,13 +369,8 @@ int main(int argc, char* argv[]) {
     const ECSEngine::EntityID scoreEntity = entities.CreateEntity("score");
     entities.AddComponent<ECSEngine::ScoreComponent>(scoreEntity, score);
 
-    // Setup Camera. The x position follows the player; y stays centered on the
-    // map so the full 12-tile height is visible in the 768px window.
-    //
-    // TEMP (Travis): The exclusion rectangles and speed are left at their
-    // neutral values here on purpose. They belong to the camera pass that still
-    // needs the 10% hard-follow band, the 10-30% slow-follow bands, and the
-    // center-40% settle behavior from the project requirements.
+    // Setup Camera. The x position follows the player using the 10% hard and
+    // 10-30% soft screen bands; y stays centered on the map.
     ECSEngine::WindowManager& windows = engine.GetWindowManager();
     windows.SetWorldScale(1.0f);
 
@@ -375,9 +379,15 @@ int main(int argc, char* argv[]) {
         playerSpawn.x,
         objectInfo.origin.y + objectInfo.height * objectInfo.tileHeight * 0.5f);
     camera.worldUnitsPerPixel = 1.0f;
-    camera.hardExclusion = ECSEngine::Rect(0.0f, 0.0f, 0.0f, 0.0f);
-    camera.softExclusion = ECSEngine::Rect(0.0f, 0.0f, 0.0f, 0.0f);
-    camera.speed = 0.0f;
+    camera.hardExclusion = ECSEngine::Rect(
+        ECSEngine::Point2D(windows.GetWindow()->getSize().x * 0.1f, 0.0f),
+        ECSEngine::Point2D(windows.GetWindow()->getSize().x * 0.9f,
+                           windows.GetWindow()->getSize().y));
+    camera.softExclusion = ECSEngine::Rect(
+        ECSEngine::Point2D(windows.GetWindow()->getSize().x * 0.3f, 0.0f),
+        ECSEngine::Point2D(windows.GetWindow()->getSize().x * 0.7f,
+                           windows.GetWindow()->getSize().y));
+    camera.speed = 0.1f;
 
     const ECSEngine::EntityID cameraEntity = entities.CreateEntity("camera");
     entities.AddComponent<ECSEngine::CameraComponent>(cameraEntity, camera);
