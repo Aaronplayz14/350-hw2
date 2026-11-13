@@ -20,9 +20,9 @@ namespace ECSEngine {
  * zero.
  *
  * Stars are ordinary dynamic entities: LocationComponent, MovementComponent,
- * CollisionComponent, and SpriteComponent. They intentionally do not get a
- * GravityComponent, so they travel in straight lines until CollisionSystem
- * bounces them off the map and off each other.
+ * CollisionComponent, SpriteComponent, and GravityComponent. Gravity pulls
+ * them down while CollisionSystem bounces them off the map and off each other,
+ * losing some speed with every collision.
  *
  * CreateStar() is public because the level also places one test star by hand
  * (outside the normal spawner path) to exercise wall jumping.
@@ -90,7 +90,7 @@ public:
             static std::mt19937 randomEngine(std::random_device{}());
             static std::uniform_real_distribution<float> angleDistribution(
                 0.0f, 2.0f * 3.14159265358979323846f);
-            static std::uniform_real_distribution<float> speedDistribution(6.0f, 10.0f);
+            static std::uniform_real_distribution<float> speedDistribution(3.0f, 5.0f);
 
             const float angle = angleDistribution(randomEngine);
             const float speed = speedDistribution(randomEngine);
@@ -132,6 +132,10 @@ public:
 
         entities.template AddComponent<LocationComponent>(star, LocationComponent{location});
         entities.template AddComponent<MovementComponent>(star, MovementComponent{velocity});
+
+        // A gentler acceleration keeps stars collectable near the spawner.
+        entities.template AddComponent<GravityComponent>(
+            star, GravityComponent(Point2D(0.0f, 0.6f)));
 
         CollisionComponent collision{};
         collision.staticEntity = 0;

@@ -8,6 +8,8 @@
 # Linker output
 *.ilk
 *.map
+!assets/sky.map
+!assets/world.map
 *.exp
 
 # Precompiled Headers

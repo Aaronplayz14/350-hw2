@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+
 namespace ECSEngine
 {
 
@@ -36,6 +38,11 @@ public:
 			}
 
 			movementComponent.velocity += acceleration;
+            if (it->GetName() == "star") {
+                // Keep a small gravity step even at rest so CollisionSystem
+                // verifies floor support each frame; stars fall off ledges.
+                movementComponent.velocity.y = std::min(movementComponent.velocity.y, 12.0F);
+            }
         }
 
 		return kContinue;

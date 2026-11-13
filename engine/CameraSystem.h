@@ -16,10 +16,9 @@ namespace ECSEngine {
 /**
  * @brief Positions the camera to follow entities with a CameraFollower.
  *
- * CameraSystem currently copies the follower's x coordinate into the camera
- * position and leaves y alone. The project requirements call for horizontal
- * follow bands and a fixed y; those details are marked with temporary notes
- * below while that part of the camera work is still in progress.
+ * Uses Travis's hard/soft horizontal follow bands with a fixed base y.
+ * Collision shake is a temporary display offset; it never changes the base
+ * camera position or the follow-band calculations.
  */
 //-----------------------------------------------------------------------
 template <typename... Components>
@@ -48,18 +47,10 @@ public:
 
             CameraComponent& cameraComponent = entities.template GetComponent<CameraComponent>(idCam);
 
-            // TEMP (Travis): This is the spot for the remaining camera work.
-            // Current behavior is intentionally minimal: the camera snaps its
-            // x coordinate to the follower and leaves y at the level center.
-            //
-            // Intended behavior from the project requirements:
-            // 1. keep y fixed and follow only on the x axis;
-            // 2. keep the player out of the outer 10% of the screen width;
-            // 3. in the 10-30% side bands, tween the camera slowly;
-            // 4. when the player stops, keep easing until they are inside the
-            //    center 40% of the screen.
-            //
-            // These notes can be deleted after the camera implementation lands.
+            // Restore the unshaken center before converting screen-space
+            // follow bands. Last frame's shake must not steer the camera.
+            windowManager.SetWorldScale(cameraComponent.worldUnitsPerPixel);
+            windowManager.SetWorldCenter(cameraComponent.position);
 
             for (auto it2 = entities.begin(); it2 != entities.end(); ++it2) {
 
@@ -67,10 +58,14 @@ public:
                     continue;
                 }
 
-                const EntityID idFol = it2->GetID();
-                if (!entities.template HasComponent<CameraFollower>(idFol)) {
+                const EntityID follower = it2->GetID();
+                if (!entities.template HasComponent<CameraFollower>(follower)) {
                     continue;
                 }
+
+                const EntityID idFol = entities.template GetComponent<CameraFollower>(follower).entityID;
+                if (!entities.IsValid(idFol) ||
+                    !entities.template HasComponent<LocationComponent>(idFol)) continue;
 
                 const LocationComponent& locationComponent = entities.template GetComponent<LocationComponent>(idFol);
 
@@ -89,8 +84,19 @@ public:
                     cameraComponent.position.x += distFromZone * cameraComponent.speed;
                 }
 
-                windowManager.SetWorldCenter(cameraComponent.position);
             }
+
+            // Sample and advance once per camera frame, even without a
+            // follower, and return exactly to the base position on expiry.
+            Point2D displayedPosition = cameraComponent.position;
+            if (entities.template HasComponent<CameraShake>(idCam)) {
+                CameraShake& shake = entities.template GetComponent<CameraShake>(idCam);
+                displayedPosition += shake.GetOffset();
+                if (--shake.frameLimit <= 0) {
+                    entities.template RemoveComponent<CameraShake>(idCam);
+                }
+            }
+            windowManager.SetWorldCenter(displayedPosition);
         }
         return kContinue; 
     }

@@ -16,6 +16,7 @@ struct CollisionComponent {
     uint8_t onCeiling : 1;
     uint8_t onLeftWall : 1;
     uint8_t onRightWall : 1;
+    uint8_t resting : 1;        // Fully settled after floor collision resolution
     Rect collisionBox;          // The bounding box for collision detection
     Rect previousCollisionBox;  // The previous bounding box for collision detection
 };

@@ -1,0 +1,13 @@
+dictionary 1
+h spritesheet-backgrounds-default.png 256 768 256 256
+c spritesheet-backgrounds-default.png 512 0 256 256
+m spritesheet-backgrounds-default.png 768 256 256 256
+t spritesheet-backgrounds-default.png 256 256 256 256
+w spritesheet-backgrounds-default.png 256 0 256 256
+b spritesheet-backgrounds-default.png 0 0 256 256
+map origin -1024 -256 tile 256 256 size 22 5
+wwwwwwwwwwwwwwwwwwwwww
+wwwwwwwwwwwwwwwwwwwwww
+cmctmhctmhmtctmhhtmchc
+bbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbb
