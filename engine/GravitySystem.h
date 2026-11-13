@@ -11,6 +11,26 @@ public:
 	
 	tSystemReturn Run(EngineView<Components...> *engine) override
 	{
+
+		EntityManager<Components...>& entities = engine->GetEntityManager();
+
+        for (auto it = entities.begin(); it != entities.end(); ++it) {
+
+            if (!it->IsValid()) {
+                continue;
+            }
+
+            const EntityID id = it->GetID();
+            if (!entities.template HasComponent<GravityComponent>(id)) {
+                continue;
+            }
+
+            GravityComponent& gravityComponent = entities.template GetComponent<GravityComponent>(id);
+			MovementComponent& movementComponent = entities.template GetComponent<MovementComponent>(id);
+
+			movementComponent.velocity += gravityComponent.acceleration;
+        }
+
 		return kContinue;
 	}
 	
