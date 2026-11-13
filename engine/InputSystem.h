@@ -98,6 +98,8 @@ public:
 
                     } else if (!collisionComponent.onGround) { // If player against wall and not on ground
 
+                        movementComponent.velocity.x += kAirRunAcceleration;
+
                         // Deccelerate fall
                         SlowWallSlide(engine, inputComponent, movementComponent);
 
@@ -118,6 +120,8 @@ public:
                         }
 
                     } else if (!collisionComponent.onGround) { // If player against wall and not on ground
+
+                        movementComponent.velocity.x -= kAirRunAcceleration;
 
                         // Deccelerate fall
                         SlowWallSlide(engine, inputComponent, movementComponent);
