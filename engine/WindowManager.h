@@ -36,7 +36,7 @@ public:
 private:
     std::shared_ptr<sf::RenderWindow> mWindow;
     Point2D mWorldCenter; // Center of the world in pixels
-	float mWorldUnitsPerPixel; // How many world units per pixel
+    float mWorldUnitsPerPixel = 1.0f; // How many world units per pixel
 };
 
 }  // namespace ECSEngine

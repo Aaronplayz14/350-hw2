@@ -15,24 +15,34 @@
 
 namespace ECSEngine {
 
-// Owns every entity and every component in the ECS world.
-//
-// Entity ids are indices into mEntities.  Components are stored densely, one
-// ComponentStorage per type, and mEntityComponents maps (entity, component
-// type) to the component's slot.  Removing an entity leaves an invalid slot in
-// mEntities and puts its id on a free list; iterators still visit the invalid
-// slot, so callers must check Entity::IsValid() (or EntityManager::IsValid)
-// before using an entity.
-//
-// Typical iteration:
-//
-//     for (auto it = manager.begin(); it != manager.end(); ++it) {
-//         if (!it->IsValid()) continue;
-//         EntityID id = it->GetID();
-//         if (!manager.HasComponent<LocationComponent>(id)) continue;
-//         auto& location = manager.GetComponent<LocationComponent>(id);
-//         // ...
-//     }
+//-----------------------------------------------------------------------
+/**
+ * @brief Owns every entity and every component in the ECS world.
+ *
+ * Entity ids are indices into mEntities. Components are stored densely, one
+ * ComponentStorage per component type, and mEntityComponents maps each entity
+ * to one component slot per type. Removing an entity leaves an invalid slot in
+ * mEntities and puts its id on a free list; iterators still visit the invalid
+ * slot, so callers must check Entity::IsValid() (or EntityManager::IsValid)
+ * before using an entity.
+ *
+ * The manager deliberately separates entity lifetime from component lifetime:
+ * components are removed independently, and adding a component to an entity
+ * that already has one replaces the old value instead of duplicating it.
+ *
+ * Typical iteration:
+ *
+ *     for (auto it = manager.begin(); it != manager.end(); ++it) {
+ *         if (!it->IsValid()) continue;
+ *         EntityID id = it->GetID();
+ *         if (!manager.HasComponent<LocationComponent>(id)) continue;
+ *         auto& location = manager.GetComponent<LocationComponent>(id);
+ *         // ...
+ *     }
+ *
+ * Implemented with the help of AI.
+ */
+//-----------------------------------------------------------------------
 template <typename... Components>
 class EntityManager {
 public:
@@ -41,9 +51,19 @@ public:
     using tEntity = std::vector<Entity>;
     using const_iterator = tEntity::const_iterator;
 
-    // Creates a live entity and returns its id.  Ids from previously removed
-    // entities are reused before the entity vector grows.  The name is stored
-    // on the Entity and can be retrieved with Entity::GetName().
+    //-------------------------------------------------------------------
+    /**
+     * @brief Creates a live entity and returns its id.
+     *
+     * Ids from previously removed entities are reused before the entity vector
+     * grows. A reused slot starts with no components so stale component links
+     * cannot leak into the new object. The name is stored on the Entity and can
+     * be retrieved with Entity::GetName().
+     *
+     * @param name Display/type name for the entity.
+     * @return Stable id of the new entity.
+     */
+    //-------------------------------------------------------------------
     [[nodiscard]] EntityID CreateEntity(const std::string& name) {
         EntityID id;
         if (!mFreeEntityIDs.empty()) {
@@ -61,15 +81,25 @@ public:
         return id;
     }
 
-    // Removes the entity and all of its components.  The entity's slot is kept
-    // (marked invalid) so that existing ids remain valid indices.
+    //-------------------------------------------------------------------
+    /**
+     * @brief Removes an entity and every component it owns.
+     *
+     * The entity's slot is kept and marked invalid so existing ids remain
+     * valid indices. The id is pushed onto the free list for CreateEntity to
+     * reuse.
+     *
+     * @param entity Id of the entity to remove.
+     * @return None.
+     */
+    //-------------------------------------------------------------------
     void RemoveEntity(EntityID entity) {
         assert(IsValid(entity));
         if (!IsValid(entity)) {
             return;
         }
 
-        // Remove every component the entity owns.  The comma fold is a no-op
+        // Remove every component the entity owns. The comma fold is a no-op
         // for an empty Components pack.
         (RemoveComponent<Components>(entity), ...);
 
@@ -78,8 +108,18 @@ public:
         mFreeEntityIDs.push_back(entity);
     }
 
-    // Adds (or replaces) component on entity.  Replacing a component reuses the
-    // component storage's free list instead of growing it.
+    //-------------------------------------------------------------------
+    /**
+     * @brief Adds a component to an entity, replacing any existing one.
+     *
+     * Replacing a component reuses the component storage's free list instead
+     * of growing it, so repeated AddComponent calls do not leak slots.
+     *
+     * @param entity Target entity; must be alive.
+     * @param component Component value to copy or move into storage.
+     * @return None.
+     */
+    //-------------------------------------------------------------------
     template <typename T>
     void AddComponent(EntityID entity, T component) {
         assert(IsValid(entity));
@@ -100,8 +140,17 @@ public:
         slot = storage.Add(std::move(component));
     }
 
-    // Removes component from entity.  Does nothing when the entity does not
-    // have that component.
+    //-------------------------------------------------------------------
+    /**
+     * @brief Removes a component from an entity.
+     *
+     * Does nothing when the entity is invalid or does not own that component,
+     * which makes cleanup code safe to run without extra HasComponent checks.
+     *
+     * @param entity Target entity.
+     * @return None.
+     */
+    //-------------------------------------------------------------------
     template <typename T>
     void RemoveComponent(EntityID entity) {
         if (!IsValid(entity)) {
@@ -119,7 +168,13 @@ public:
         slot = kNullComponent;
     }
 
-    // Returns true when entity is alive and owns component T.
+    //-------------------------------------------------------------------
+    /**
+     * @brief Returns true when entity is alive and owns component T.
+     * @param entity Entity id to test.
+     * @return true only when both the entity and the component slot are valid.
+     */
+    //-------------------------------------------------------------------
     template <typename T>
     [[nodiscard]] bool HasComponent(EntityID entity) const {
         if (!IsValid(entity)) {
@@ -132,9 +187,18 @@ public:
         return slot != kNullComponent && std::get<index>(mComponentStorages).IsValid(slot);
     }
 
-    // Returns the component owned by entity.  The reference stays valid until
-    // that component is removed, but may be invalidated by operations on other
-    // component types if their storage has to grow.
+    //-------------------------------------------------------------------
+    /**
+     * @brief Returns the component owned by an entity.
+     *
+     * The reference stays valid until that component is removed, but may be
+     * invalidated by operations that grow its storage. In debug builds the
+     * assertions catch an invalid entity or a missing component.
+     *
+     * @param entity Entity that owns the component.
+     * @return Mutable reference to the stored component.
+     */
+    //-------------------------------------------------------------------
     template <typename T>
     T& GetComponent(EntityID entity) {
         assert(IsValid(entity));
@@ -146,6 +210,7 @@ public:
         return std::get<index>(mComponentStorages).Get(slot);
     }
 
+    /// @brief Const overload of GetComponent(); the entity must own the component.
     template <typename T>
     const T& GetComponent(EntityID entity) const {
         assert(IsValid(entity));
@@ -157,44 +222,59 @@ public:
         return std::get<index>(mComponentStorages).Get(slot);
     }
 
-    // Direct access to a component storage, useful for systems that want to
-    // iterate live components without first walking every entity.  The returned
-    // reference is owned by this manager and is valid for the manager's
-    // lifetime; individual component references may move when the storage grows.
+    //-------------------------------------------------------------------
+    /**
+     * @brief Direct access to one component storage.
+     *
+     * Useful for systems that want to iterate live components without first
+     * walking every entity. The storage reference is owned by this manager and
+     * remains valid for the manager's lifetime; individual component
+     * references may move when the storage grows.
+     *
+     * @return Reference to the dense storage for T.
+     */
+    //-------------------------------------------------------------------
     template <typename T>
     ComponentStorage<T>& GetComponentStorage() {
         constexpr std::size_t index = detail::TypeIndex<T, Components...>::value;
         return std::get<index>(mComponentStorages);
     }
 
+    /// @brief Const overload of GetComponentStorage().
     template <typename T>
     const ComponentStorage<T>& GetComponentStorage() const {
         constexpr std::size_t index = detail::TypeIndex<T, Components...>::value;
         return std::get<index>(mComponentStorages);
     }
 
-    // Returns true when entity is alive (its component slots are meaningful).
+    /// @brief Returns true when the id refers to a live entity.
     [[nodiscard]] bool IsValid(EntityID entity) const {
         return entity < mEntities.size() && mEntities[entity].IsValid();
     }
 
-    // Lower-case alias matching the lab EntityManager API.
+    /// @brief Lower-case alias matching the lab EntityManager API.
     [[nodiscard]] bool ValidEntity(EntityID entity) const { return IsValid(entity); }
 
-    // Returns the entity for an id, including invalid entities, or nullptr when
-    // the id has never been allocated.
+    //-------------------------------------------------------------------
+    /**
+     * @brief Returns the entity record for an id, including invalid entities.
+     * @param entity Entity id to look up.
+     * @return Pointer to the record, or nullptr when the id was never allocated.
+     */
+    //-------------------------------------------------------------------
     [[nodiscard]] Entity* GetEntity(EntityID entity) {
         return entity < mEntities.size() ? &mEntities[entity] : nullptr;
     }
 
+    /// @brief Const overload of GetEntity().
     [[nodiscard]] const Entity* GetEntity(EntityID entity) const {
         return entity < mEntities.size() ? &mEntities[entity] : nullptr;
     }
 
-    // Number of slots in the entity vector (live plus invalid/reusable slots).
+    /// @brief Number of slots in the entity vector, including reusable slots.
     [[nodiscard]] std::size_t GetEntityCount() const { return mEntities.size(); }
 
-    // Number of live entities.
+    /// @brief Number of live entities, excluding removed slots.
     [[nodiscard]] std::size_t GetActiveEntityCount() const {
         std::size_t count = 0;
         for (const Entity& entity : mEntities) {

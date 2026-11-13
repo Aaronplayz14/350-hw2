@@ -1,0 +1,25 @@
+dictionary 2
+n spritesheet-tiles-default.png 128 64 64 64 0 0 64 64
+U spritesheet-tiles-default.png 128 192 64 64 0 0 64 64
+H spritesheet-tiles-default.png 128 128 64 64 0 0 64 64
+S spritesheet-tiles-default.png 0 64 64 64 0 0 64 64
+T spritesheet-tiles-default.png 192 192 64 64 0 0 64 64
+o spritesheet-tiles-default.png 192 0 64 64 0 0 64 64
+( spritesheet-tiles-default.png 192 128 64 64 0 0 64 64
+) spritesheet-tiles-default.png 192 64 64 64 0 0 64 64
+X spritesheet-tiles-default.png 192 384 64 64 0 0 64 64
+[ spritesheet-tiles-default.png 192 320 64 64 0 0 64 64
+] spritesheet-tiles-default.png 192 256 64 64 0 0 64 64
+map origin 0 0 tile 64 64 size 32 12
+................................
+................................
+................................
+................................
+n........................S.....n
+H........S.....................H
+H..............................H
+H..............nn..............H
+H........n.....HH........n.....H
+U......o.U.....UU......o.U.....U
+(TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT)
+[XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX]

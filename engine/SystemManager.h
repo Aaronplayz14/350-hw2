@@ -14,28 +14,58 @@ enum tSystemReturn { kContinue, kExit };
 template <typename... Components>
 class EngineView;
 
-// Base class for every game system.  A system receives the engine view so that
-// it can access the resource managers and entities; it must not own those
-// resources itself.
+//-----------------------------------------------------------------------
+/**
+ * @brief Base class for every game system.
+ *
+ * A system receives the engine view so that it can access the resource
+ * managers and the entity manager. Systems do not own those resources; the
+ * ECSEngine owns them and keeps them alive for the whole game.
+ *
+ * The manager calls Run once per frame in the order the systems were added.
+ */
+//-----------------------------------------------------------------------
 template <typename... Components>
 class System {
 public:
     virtual ~System() = default;
 
-    // Runs one frame of this system.  Returning kExit asks the SystemManager
-    // (and therefore the main loop) to stop.
+    /// @brief Runs one frame of this system.
+    ///
+    /// Returning kExit asks the SystemManager (and therefore the main loop) to
+    /// stop after this system finishes.
     virtual tSystemReturn Run(EngineView<Components...>* scene) = 0;
 
-    // Name used for diagnostics.
+    /// @brief Name used for diagnostics and exit messages.
     virtual const std::string& GetName() const = 0;
 };
 
-// Runs systems in the order they were added.  Systems are added before Run()
-// starts and are executed once per frame until one returns kExit.
+//-----------------------------------------------------------------------
+/**
+ * @brief Runs systems in a fixed, caller-defined order.
+ *
+ * The execution order is the order in which systems were added. This matters
+ * for gameplay: input must update velocity before gravity and movement, and
+ * collision resolution must see the same frame's positions. Systems are added
+ * before Run() starts and are executed once per frame until one returns
+ * kExit.
+ */
+//-----------------------------------------------------------------------
 template <typename... Components>
 class SystemManager {
 public:
-    // Runs every system once.  Returns false if a system requested an exit.
+    //-------------------------------------------------------------------
+    /**
+     * @brief Runs every system once.
+     *
+     * A null system is skipped so a failed construction does not crash the
+     * frame. If any system returns kExit, the remaining systems are not run
+     * and the caller is told to stop the game loop.
+     *
+     * @param scene Engine view passed to every system.
+     * @return true when the frame completed, false when a system requested exit.
+     */
+    //-------------------------------------------------------------------
     bool Run(EngineView<Components...>* scene) {
         for (auto& system : mSystems) {
             if (!system) {
@@ -50,15 +80,24 @@ public:
         return true;
     }
 
-    // Takes ownership of a system and appends it to the execution order.
+    //-------------------------------------------------------------------
+    /**
+     * @brief Takes ownership of a system and appends it to the execution order.
+     * @param system System to add; ownership moves into the manager.
+     * @return None.
+     */
+    //-------------------------------------------------------------------
     void AddSystem(std::unique_ptr<System<Components...>>&& system) {
         mSystems.push_back(std::move(system));
     }
 
-    // Removes every system; the systems are destroyed with the manager.
+    /// @brief Removes every system; the systems are destroyed with the manager.
     void ClearSystems() { mSystems.clear(); }
 
+    /// @brief Number of systems currently registered.
     [[nodiscard]] std::size_t GetSystemCount() const { return mSystems.size(); }
+
+    /// @brief True when no systems are registered.
     [[nodiscard]] bool Empty() const { return mSystems.empty(); }
 
 private:
