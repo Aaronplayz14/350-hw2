@@ -11,6 +11,13 @@ public:
 	const std::string & GetName() const override
 	{ static std::string name("GravitySystem"); return name; }
 	
+    //-------------------------------------------------------------------
+    /**
+     * @brief Applies acceleration, stronger downward gravity, and the star fall-speed cap.
+     * @param engine Borrowed view; gravity entities must also have MovementComponent.
+     * @return kContinue. Gravity is retained at rest to check for lost floor support.
+     */
+    //-------------------------------------------------------------------
 	tSystemReturn Run(EngineView<Components...> *engine) override
 	{
 

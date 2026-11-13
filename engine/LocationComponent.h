@@ -19,14 +19,14 @@ struct LocationComponent {
 };
 
 struct MovementComponent {
-    Point2D velocity;  // Velocity in pixels per second
+    Point2D velocity;  // World units per simulation frame (the game targets 60 FPS)
 };
 
 struct GravityComponent {
     GravityComponent(Point2D acceleration, int disabledTimer = 0)
         : acceleration(acceleration), disabledTimer(disabledTimer) {}
-    Point2D acceleration;  // Acceleration in pixels per second squared
-    int disabledTimer;
+    Point2D acceleration;  // Velocity change per simulation frame
+    int disabledTimer;     // Reserved field; current GravitySystem does not consume it
 };
 
 // location for respawning

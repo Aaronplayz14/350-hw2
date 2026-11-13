@@ -37,9 +37,9 @@ public:
 
     /// @brief Name supplied when the entity was created.
     ///
-    /// The manager assumes names are unique, but does not enforce it; names are
-    /// intended for debugging and for distinguishing objects such as "player"
-    /// and "star".
+    /// Names need not be unique: all collectables may be named "star". This
+    /// borrowed string must not be kept across entity-vector growth, removal,
+    /// or reuse of this id.
     const std::string& GetName() const { return mType; }
 
     /// @brief Alias kept for code that calls the name the entity's type.

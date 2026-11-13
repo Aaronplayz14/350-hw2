@@ -28,6 +28,15 @@ public:
         return name;
     }
 
+    //-------------------------------------------------------------------
+    /**
+     * @brief Resolves overlaps and publishes this frame's contact flags.
+     * Defers collected-star removal until pair traversal has finished.
+     *
+     * @param engine Borrowed managers, valid throughout this call.
+     * @return kContinue after updating contacts, sounds, score, and entities.
+     */
+    //-------------------------------------------------------------------
     tSystemReturn Run(EngineView<Components...>* engine) override {
         EntityManager<Components...>& entities = engine->GetEntityManager();
         const std::size_t entityCount = entities.GetEntityCount();
@@ -142,21 +151,43 @@ private:
         return collision.collisionBox + location.loc;
     }
 
+    //-------------------------------------------------------------------
+    /**
+     * @brief Chooses a collision face from saved world bounds and crossing times.
+     * Preserves established floor/ceiling support across tile seams and uses
+     * least penetration when the entity already overlaps the tile.
+     *
+     * @param dynamicCollision Contains the previous world-space collision box.
+     * @return Side of the static box used to separate the dynamic entity.
+     */
+    //-------------------------------------------------------------------
     static CollisionSide DetermineSide(const CollisionComponent& dynamicCollision,
                                        const Rect& dynamicBounds, const Rect& staticBounds,
-                                       const Rect& overlap) {
+                                       const Rect& overlap, const PreviousFlags& previousFlags) {
         const Rect& previousBounds = dynamicCollision.previousCollisionBox;
         const float deltaX = dynamicBounds.topLeft.x - previousBounds.topLeft.x;
         const float deltaY = dynamicBounds.topLeft.y - previousBounds.topLeft.y;
-        float firstContact = 2.0F;
+        // Gravity deliberately probes into the floor each frame. At a seam,
+        // that probe must not turn an adjacent coplanar floor into a wall.
+        if (previousFlags.onGround && deltaY >= 0.0F &&
+            std::fabs(previousBounds.topLeft.y + previousBounds.height -
+                      staticBounds.topLeft.y) <= kSideEpsilon) {
+            return CollisionSide::Top;
+        }
+        if (previousFlags.onCeiling && deltaY <= 0.0F &&
+            std::fabs(previousBounds.topLeft.y -
+                      (staticBounds.topLeft.y + staticBounds.height)) <= kSideEpsilon) {
+            return CollisionSide::Bottom;
+        }
+        float firstContact = -1.0F;
         CollisionSide enteredSide = CollisionSide::Top;
 
-        // At a diagonal corner, the face whose boundary the entity crossed
-        // first is the correct one. This is why saved pre-movement bounds are
-        // useful: the current overlap alone cannot distinguish the two faces.
+        // A diagonal collision starts only when BOTH axis intervals overlap.
+        // Select the later entry time. The earlier boundary can be crossed
+        // while the entity is still above/beside the tile and is not a hit.
         const auto consider = [&firstContact, &enteredSide](float time, CollisionSide side) {
-            if (time >= -kSideEpsilon && time <= 1.0F + kSideEpsilon && time < firstContact) {
-                firstContact = time;
+            if (time >= -kSideEpsilon && time <= 1.0F + kSideEpsilon && time > firstContact) {
+                firstContact = std::max(0.0F, time);
                 enteredSide = side;
             }
         };
@@ -188,7 +219,7 @@ private:
                          deltaY,
                      CollisionSide::Bottom);
         }
-        if (firstContact <= 1.0F + kSideEpsilon) {
+        if (firstContact >= 0.0F) {
             return enteredSide;
         }
 
@@ -204,6 +235,15 @@ private:
         return dynamicCenter < staticCenter ? CollisionSide::Top : CollisionSide::Bottom;
     }
 
+    //-------------------------------------------------------------------
+    /**
+     * @brief Separates a moving entity from a static tile and updates contact state.
+     * Handles damage respawning, landing audio, star settling, and impact shake.
+     *
+     * @param overlap Positive intersection of the current world boxes.
+     * @param previousFlags Last frame's contacts, used for event detection.
+     */
+    //-------------------------------------------------------------------
     static void ResolveStaticDynamic(EngineView<Components...>* engine,
                                      EntityManager<Components...>& entities,
                                      EntityID dynamicID, EntityID staticID,
@@ -221,8 +261,9 @@ private:
             entities.template GetComponent<LocationComponent>(dynamicID);
         MovementComponent& dynamicMovement =
             entities.template GetComponent<MovementComponent>(dynamicID);
+        const Rect staticBounds = WorldBounds(entities, staticID);
         const CollisionSide side = DetermineSide(dynamicCollision, WorldBounds(entities, dynamicID),
-                                                 WorldBounds(entities, staticID), overlap);
+                                                 staticBounds, overlap, previousFlags);
 
         const Entity* dynamicEntity = entities.GetEntity(dynamicID);
         const bool isPlayer = dynamicEntity != nullptr && dynamicEntity->GetName() == "player";
@@ -239,17 +280,20 @@ private:
                                       : std::fabs(dynamicMovement.velocity.y);
         switch (side) {
             case CollisionSide::Left:
-                dynamicLocation.loc.x -= overlap.width;
+                dynamicLocation.loc.x = staticBounds.topLeft.x -
+                    dynamicCollision.collisionBox.topLeft.x - dynamicCollision.collisionBox.width;
                 dynamicCollision.onRightWall = 1;
                 ResolveVelocity(dynamicMovement, isStar, true, true);
                 break;
             case CollisionSide::Right:
-                dynamicLocation.loc.x += overlap.width;
+                dynamicLocation.loc.x = staticBounds.topLeft.x + staticBounds.width -
+                    dynamicCollision.collisionBox.topLeft.x;
                 dynamicCollision.onLeftWall = 1;
                 ResolveVelocity(dynamicMovement, isStar, true, false);
                 break;
             case CollisionSide::Top:
-                dynamicLocation.loc.y -= overlap.height;
+                dynamicLocation.loc.y = staticBounds.topLeft.y -
+                    dynamicCollision.collisionBox.topLeft.y - dynamicCollision.collisionBox.height;
                 dynamicCollision.onGround = 1;
                 if (isPlayer && !previousFlags.onGround && dynamicMovement.velocity.y > 0.5F) {
                     PlaySoundIfPresent(engine, "footstep-grass");
@@ -257,7 +301,8 @@ private:
                 ResolveVelocity(dynamicMovement, isStar, false, true);
                 break;
             case CollisionSide::Bottom:
-                dynamicLocation.loc.y += overlap.height;
+                dynamicLocation.loc.y = staticBounds.topLeft.y + staticBounds.height -
+                    dynamicCollision.collisionBox.topLeft.y;
                 dynamicCollision.onCeiling = 1;
                 ResolveVelocity(dynamicMovement, isStar, false, false);
                 break;
@@ -283,6 +328,15 @@ private:
         return false;
     }
 
+    //-------------------------------------------------------------------
+    /**
+     * @brief Stops a player on the collision axis or damps a star's rebound.
+     * Floor friction removes sideways motion and small rebounds become zero.
+     *
+     * @param movement Borrowed movement component modified in place.
+     * @param hitPositiveFace True for a rightward or downward impact.
+     */
+    //-------------------------------------------------------------------
     static void ResolveVelocity(MovementComponent& movement, bool isStar, bool horizontal,
                                 bool hitPositiveFace) {
         float& normalVelocity = horizontal ? movement.velocity.x : movement.velocity.y;
@@ -308,6 +362,15 @@ private:
         }
     }
 
+    //-------------------------------------------------------------------
+    /**
+     * @brief Collects player/star overlaps or separates and damps two stars.
+     * Only approaching stars exchange velocities.
+     *
+     * @param pendingStarRemoval Marks stars for removal after pair traversal.
+     * @return None; positions, velocities, score, and sounds may change.
+     */
+    //-------------------------------------------------------------------
     static void ResolveDynamicPair(EngineView<Components...>* engine,
                                    EntityManager<Components...>& entities, EntityID first,
                                    EntityID second, const Rect& overlap,
@@ -367,6 +430,14 @@ private:
         }
     }
 
+    //-------------------------------------------------------------------
+    /**
+     * @brief Returns a player to its spawn and clears velocity and contact flags.
+     *
+     * @param entities Manager owning the player's components.
+     * @param id Player id; missing respawn/movement data makes this a no-op.
+     */
+    //-------------------------------------------------------------------
     static void RespawnPlayer(EntityManager<Components...>& entities, EntityID id) {
         if (!entities.template HasComponent<RespawnComponent>(id) ||
             !entities.template HasComponent<MovementComponent>(id)) {
@@ -382,6 +453,15 @@ private:
         collision.onRightWall = 0;
     }
 
+    //-------------------------------------------------------------------
+    /**
+     * @brief Starts a bounded directional shake on the first camera entity.
+     * Retains a stronger visible shake; amplitude scales with impact speed.
+     *
+     * @param side Collision direction used for the shake axis and sign.
+     * @param impactSpeed Absolute pre-resolution velocity on the collision axis.
+     */
+    //-------------------------------------------------------------------
     static void TriggerScreenShake(EntityManager<Components...>& entities, CollisionSide side,
                                    float impactSpeed) {
         const float magnitude = std::min(kMaxShakeMagnitude, impactSpeed * 0.18F);

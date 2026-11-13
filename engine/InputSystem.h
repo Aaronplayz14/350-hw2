@@ -28,8 +28,6 @@ const int kWallSlideSoundInterval = 36;
  * wall-slide slowdown, and fast-fall. Input sounds are played when the action
  * starts, and frame timers keep the dash cooldown and wall-slide sound from
  * firing too often.
- *
- * Implemented with the help of AI.
  */
 //-----------------------------------------------------------------------
 template <typename... Components>
@@ -40,6 +38,13 @@ public:
         return name;
     }
 
+    //-------------------------------------------------------------------
+    /**
+     * @brief Updates player velocity, action timers, and gameplay sounds.
+     * @param engine Borrowed view containing input, movement, and collision components.
+     * @return kContinue; contact flags are read from the preceding frame.
+     */
+    //-------------------------------------------------------------------
     tSystemReturn Run(EngineView<Components...>* engine) override { 
 
         EntityManager<Components...>& entities = engine->GetEntityManager();
@@ -59,9 +64,7 @@ public:
             CollisionComponent& collisionComponent = entities.template GetComponent<CollisionComponent>(id);
             MovementComponent& movementComponent = entities.template GetComponent<MovementComponent>(id);
 
-            // TEMP (Travis): Frame-based timers for dash and the wall-slide
-            // sound. The engine caps the loop at 60 FPS, so these are roughly
-            // seconds * 60. This block can be removed with the notes later.
+            // Dash and wall-slide sound timers use frames at a target 60 FPS.
             if (inputComponent.lastDash > 0) {
                 --inputComponent.lastDash;
             }
@@ -72,7 +75,7 @@ public:
                 --inputComponent.wallSlideSoundTimer;
             }
 
-            // TEMP (Travis): Edge detection for jump and dash. keydown is this
+            // Edge detection for jump and dash. keydown is this
             // frame; lastKeydown is the state at the start of the frame.
             const bool jumpPressed =
                 inputComponent.keydown[Key::Z] && !inputComponent.lastKeydown[Key::Z];
@@ -178,13 +181,13 @@ public:
                 }
 
             } else if (jumpReleased && movementComponent.velocity.y < 0) { // If jump key is released and player has upward velocity
-                // TEMP (Travis): Variable jump height. Releasing early stops
+                // Variable jump height. Releasing early stops
                 // the rest of the upward motion, so taps are shorter.
                 movementComponent.velocity.y = 0;
             }
 
             if (inputComponent.keydown[Key::C] && !inputComponent.lastKeydown[Key::C]) {
-                // TEMP (Travis): Dash on a fresh C press, with a one-second
+                // Dash on a fresh C press, with a one-second
                 // cooldown. The dash timer keeps the high speed from being
                 // clamped by the run-speed code above.
                 if (inputComponent.lastDash <= 0) {
@@ -202,7 +205,7 @@ public:
             }
 
             if (inputComponent.keydown[Key::Down] && !collisionComponent.onGround) { // If down is pressed and player is in air
-                // TEMP (Travis): Fast fall adds downward acceleration and keeps
+                // Fast fall adds downward acceleration and keeps
                 // it under a maximum so it stays controllable.
                 movementComponent.velocity.y += kFastFallAcceleration;
                 movementComponent.velocity.y = std::min(movementComponent.velocity.y, kMaxFallVelocity);
@@ -213,7 +216,7 @@ public:
     }
 
 private:
-    // TEMP (Travis): Wall-slide fall cap and sound. The sound is rate-limited
+    // Wall-slide fall cap and sound. The sound is rate-limited
     // so holding into the wall does not restart it every frame.
     static void SlowWallSlide(EngineView<Components...>* engine, InputComponent& inputComponent,
                               MovementComponent& movementComponent) {
@@ -229,7 +232,7 @@ private:
         }
     }
 
-    // TEMP (Travis): Missing sound assets must not stop the engine tests,
+    // Missing sound assets must not stop the engine tests,
     // which do not load the .ogg files.
     static void PlaySoundIfPresent(EngineView<Components...>* engine, const std::string& name) {
         SoundManager& sounds = engine->GetSoundManager();

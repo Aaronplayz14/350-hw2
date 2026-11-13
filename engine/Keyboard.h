@@ -1,8 +1,7 @@
-// TEMP (Travis): This file is only the named scancode table used by
+// Named scancode table used by
 // InputComponent and InputSystem. The integer values intentionally follow the
 // sf::Keyboard::Scancode ordering. Gameplay currently reads Key::Right,
-// Key::Left, Key::Down, Key::Z (jump), and Key::C (dash). These notes can be
-// removed once the input pass is finished.
+// Key::Left, Key::Down, Key::Z (jump), and Key::C (dash).
 namespace ECSEngine {
 
 namespace Key {

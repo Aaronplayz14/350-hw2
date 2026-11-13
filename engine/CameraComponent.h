@@ -14,9 +14,7 @@
 
 namespace ECSEngine {
 
-// TEMP (Travis): Extra field notes for the camera pass. These comments are
-// intentionally temporary and can be removed once the camera behavior is
-// implemented and documented in the usual style.
+/// @brief Base camera pose and the screen-space bands used by CameraSystem.
 struct CameraComponent {
     Point2D position;  // [world coordinates] center of the camera view
 
@@ -24,31 +22,33 @@ struct CameraComponent {
     // 1.0 so world coordinates and pixels line up directly.
     float worldUnitsPerPixel;
 
-    // Screen-space exclusion region from the original component design. The
-    // current level leaves it empty; it is available if the camera needs an
-    // explicit no-go area.
+    // Screen-space 10%-90% band. Crossing it causes immediate tracking.
     Rect hardExclusion;
 
-    // Screen-space region where the camera may move. The current level leaves
-    // it empty; it can be used for the slow-follow bands described in the
-    // project requirements.
+    // Screen-space center 40% band. Outside it, the camera eases toward the player.
     Rect softExclusion;
 
-    // Follow speed. A value of 0 currently snaps; values above 0 are intended
-    // for tweening the camera toward the target.
+    // Fraction of soft-band distance covered per frame (0.1 in game setup).
     float speed;
 };
 
+/// @brief Non-owning entity id of the location the camera follows.
 struct CameraFollower {
     EntityID entityID;  // The entity that this camera follows
 };
 
+/// @brief Remaining shake frames, initial directional amplitude, and total duration.
 struct CameraShake {
     int frameLimit;
     Point2D offset;
     int duration = 14;
 
-    // Oscillate along the impact direction, with a quadratic fade to zero.
+    //-------------------------------------------------------------------
+    /**
+     * @brief Samples directional oscillation with a quadratic fade to zero.
+     * @return Temporary display offset; does not advance the timer or move the base camera.
+     */
+    //-------------------------------------------------------------------
     Point2D GetOffset() const {
         if (frameLimit <= 0 || duration <= 0) return Point2D();
         const float remaining = std::clamp(static_cast<float>(frameLimit) / duration, 0.0F, 1.0F);

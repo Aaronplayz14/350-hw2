@@ -40,6 +40,8 @@ public:
      * SpriteComponent::bounds means "use the texture's natural pixel size";
      * otherwise the sprite is scaled to the requested box.
      *
+     * Implemented with the help of AI.
+     *
      * @param engine Engine view providing the window, entities, and sprites.
      * @return kContinue; drawing never requests an engine exit.
      */

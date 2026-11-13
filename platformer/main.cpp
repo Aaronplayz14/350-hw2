@@ -54,6 +54,7 @@ struct TileDefinition {
     ECSEngine::SpriteID spriteID = 0;
 };
 
+/// @brief Returns a copied resource path, adding a separator only when needed.
 std::string JoinPath(const std::string& directory, const std::string& file) {
     if (directory.empty()) {
         return file;
@@ -83,8 +84,9 @@ std::string JoinPath(const std::string& directory, const std::string& file) {
  * @param file Map filename relative to path.
  * @param info Receives the map header information.
  * @param starSprite Sprite used by stars created from 'S' spawner cells.
- * @return true when the map was loaded; false when the file is missing or
- *         malformed.
+ * @return false for a missing/empty map or missing headers. Malformed entries
+ *         and unknown cells warn and are skipped; loading is not transactional.
+ * @throws std::exception propagated from texture registration on asset failure.
  */
 //-----------------------------------------------------------------------
 bool LoadMap(Engine& engine, const std::string& path, const std::string& file, MapInfo& info,
@@ -216,11 +218,8 @@ bool LoadMap(Engine& engine, const std::string& path, const std::string& file, M
             entities.AddComponent<ECSEngine::SpriteComponent>(entity, sprite);
 
             if (info.type == 2) {
-                ECSEngine::CollisionComponent collision{};
-                collision.staticEntity = 1;
-                collision.doesDamage = symbol == 'X' ? 1 : 0;
-                collision.collisionBox = definition.boundRect;
-                collision.previousCollisionBox = definition.boundRect;
+                const ECSEngine::CollisionComponent collision = ECSEngine::MakeMapCollision(
+                    symbol, definition.boundRect, info.tileWidth, info.tileHeight);
                 entities.AddComponent<ECSEngine::CollisionComponent>(entity, collision);
             }
 
@@ -246,6 +245,19 @@ bool LoadMap(Engine& engine, const std::string& path, const std::string& file, M
 
 }  // namespace
 
+//-----------------------------------------------------------------------
+/**
+ * @brief Loads resources, constructs the level, registers systems, and runs the game.
+ *
+ * Managers belong to the local engine. Entity/component ids refer to those
+ * managers and must not be used after shutdown. Camera setup incorporates
+ * Travis's hard/soft follow bands.
+ *
+ * @param argc Number of command-line arguments.
+ * @param argv Optional -path resource_directory overrides the relative asset path.
+ * @return 0 when the game loop exits normally.
+ */
+//-----------------------------------------------------------------------
 int main(int argc, char* argv[]) {
     if (argc >= 3 && argv[1] == std::string("-path")) {
         gResourcePath = argv[2];
@@ -255,7 +267,6 @@ int main(int argc, char* argv[]) {
 
     // Game setup below builds the initial scene: sounds, level maps, player,
     // score display, camera, and systems.
-    // Implemented with the help of AI.
     Engine engine(1024, 768, "Test Engine");
 
     // Load sounds. Gameplay systems can request these by name later.

@@ -7,8 +7,9 @@
 
 namespace ECSEngine {
 
-// The sprite rectangle is relative to the entity location in the world
-// This is only defined if an entity also has a LocationComponent.
+/// @brief Frame countdown and remaining spawn budget for one spawner tile.
+/// Entity and sprite ids are non-owning handles. SpawnSystem currently supports
+/// only spawnType == "star" and requires the tile's LocationComponent.
 class SpawnComponent {
 public:
     EntityID entityID;  // The entity that this spawn component is attached to

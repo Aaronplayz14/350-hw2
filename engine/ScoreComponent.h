@@ -7,8 +7,9 @@
 
 namespace ECSEngine {
 
-// The sprite rectangle is relative to the entity location in the world
-// This is only defined if an entity also has a LocationComponent.
+/// @brief Numeric score and non-owning handles to the registered numeral sprites
+/// and three display entities. Game setup creates these resources; ScoreSystem
+/// changes their sprite ids and clamps the displayed value to 000-999.
 class ScoreComponent {
 public:
     int score;
