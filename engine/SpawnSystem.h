@@ -90,7 +90,7 @@ public:
             static std::mt19937 randomEngine(std::random_device{}());
             static std::uniform_real_distribution<float> angleDistribution(
                 0.0f, 2.0f * 3.14159265358979323846f);
-            static std::uniform_real_distribution<float> speedDistribution(6.0f, 10.0f);
+            static std::uniform_real_distribution<float> speedDistribution(3.0f, 5.0f);
 
             const float angle = angleDistribution(randomEngine);
             const float speed = speedDistribution(randomEngine);
@@ -133,9 +133,9 @@ public:
         entities.template AddComponent<LocationComponent>(star, LocationComponent{location});
         entities.template AddComponent<MovementComponent>(star, MovementComponent{velocity});
 
-        // Stars fall like the player, then bounce off the level geometry.
+        // A gentler acceleration keeps stars collectable near the spawner.
         entities.template AddComponent<GravityComponent>(
-            star, GravityComponent(Point2D(0.0f, 2.0f)));
+            star, GravityComponent(Point2D(0.0f, 0.6f)));
 
         CollisionComponent collision{};
         collision.staticEntity = 0;

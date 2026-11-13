@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <cmath>
 #include <unordered_map>
 
 #include "Entity.h"
@@ -44,6 +46,15 @@ struct CameraFollower {
 struct CameraShake {
     int frameLimit;
     Point2D offset;
+    int duration = 14;
+
+    // Oscillate along the impact direction, with a quadratic fade to zero.
+    Point2D GetOffset() const {
+        if (frameLimit <= 0 || duration <= 0) return Point2D();
+        const float remaining = std::clamp(static_cast<float>(frameLimit) / duration, 0.0F, 1.0F);
+        const float phase = static_cast<float>(duration - frameLimit) * 0.95F;
+        return offset * (std::cos(phase) * remaining * remaining);
+    }
 };
 
 }  // namespace ECSEngine

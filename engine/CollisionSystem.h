@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -47,6 +48,7 @@ public:
             collision.onCeiling = 0;
             collision.onLeftWall = 0;
             collision.onRightWall = 0;
+            collision.resting = 0;
         }
 
         for (EntityID first = 0; first < entityCount; ++first) {
@@ -110,9 +112,19 @@ private:
         std::uint8_t onRightWall = 0;
     };
 
-    static constexpr float kStarBounceDamping = 0.85F;
-    static constexpr float kMinStarSpeed = 0.5F;
+    // Stars lose much more energy than the player on every hit. Ground hits
+    // are damped hardest so a star settles instead of bouncing around forever.
+    static constexpr float kStarWallBounce = 0.5F;
+    static constexpr float kStarGroundBounce = 0.28F;
+    static constexpr float kStarCeilingBounce = 0.4F;
+    static constexpr float kStarGroundFriction = 0.78F;
+    static constexpr float kStarStarDamping = 0.7F;
+    static constexpr float kStarRestVerticalSpeed = 1.2F;
+    static constexpr float kStarRestHorizontalSpeed = 1.0F;
+    static constexpr float kMinStarSpeed = 0.1F;
     static constexpr float kSideEpsilon = 0.01F;
+    static constexpr int kShakeFrames = 14;
+    static constexpr float kMaxShakeMagnitude = 4.0F;
 
     enum class CollisionSide { Left, Right, Top, Bottom };
 
@@ -251,7 +263,12 @@ private:
                 break;
         }
 
-        if (isPlayer && impactSpeed > 0.5F && !HadContactOnSide(previousFlags, side)) {
+        if (isStar) {
+            dynamicCollision.resting = dynamicCollision.onGround &&
+                                      dynamicMovement.velocity.x == 0.0F &&
+                                      dynamicMovement.velocity.y == 0.0F;
+        }
+        if (isPlayer && impactSpeed > 3.0F && !HadContactOnSide(previousFlags, side)) {
             TriggerScreenShake(entities, side, impactSpeed);
         }
     }
@@ -273,8 +290,18 @@ private:
                                                        : normalVelocity < 0.0F;
         if (isStar) {
             if (movingIntoSurface) {
-                normalVelocity = -normalVelocity;
-                DampStarVelocity(movement);
+                const float restitution = horizontal ? kStarWallBounce
+                    : (hitPositiveFace ? kStarGroundBounce : kStarCeilingBounce);
+                normalVelocity = -normalVelocity * restitution;
+                if (!horizontal && hitPositiveFace) {
+                    movement.velocity.x *= kStarGroundFriction;
+                    if (std::fabs(normalVelocity) < kStarRestVerticalSpeed) {
+                        normalVelocity = 0.0F;
+                    }
+                    if (std::fabs(movement.velocity.x) < kStarRestHorizontalSpeed) {
+                        movement.velocity.x = 0.0F;
+                    }
+                }
             }
         } else {
             normalVelocity = 0.0F;
@@ -314,21 +341,30 @@ private:
         MovementComponent& secondMovement =
             entities.template GetComponent<MovementComponent>(second);
 
+        bool approaching = false;
         if (overlap.width < overlap.height) {
             const float displacement = overlap.width * 0.5F;
             const bool firstOnLeft = firstLocation.loc.x <= secondLocation.loc.x;
             firstLocation.loc.x += firstOnLeft ? -displacement : displacement;
             secondLocation.loc.x += firstOnLeft ? displacement : -displacement;
-            std::swap(firstMovement.velocity.x, secondMovement.velocity.x);
+            approaching = firstOnLeft ? firstMovement.velocity.x > secondMovement.velocity.x
+                                      : firstMovement.velocity.x < secondMovement.velocity.x;
+            if (approaching) std::swap(firstMovement.velocity.x, secondMovement.velocity.x);
         } else {
             const float displacement = overlap.height * 0.5F;
             const bool firstAbove = firstLocation.loc.y <= secondLocation.loc.y;
             firstLocation.loc.y += firstAbove ? -displacement : displacement;
             secondLocation.loc.y += firstAbove ? displacement : -displacement;
-            std::swap(firstMovement.velocity.y, secondMovement.velocity.y);
+            approaching = firstAbove ? firstMovement.velocity.y > secondMovement.velocity.y
+                                     : firstMovement.velocity.y < secondMovement.velocity.y;
+            if (approaching) std::swap(firstMovement.velocity.y, secondMovement.velocity.y);
         }
-        DampStarVelocity(firstMovement);
-        DampStarVelocity(secondMovement);
+        if (approaching) {
+            DampStarVelocity(firstMovement);
+            DampStarVelocity(secondMovement);
+            entities.template GetComponent<CollisionComponent>(first).resting = 0;
+            entities.template GetComponent<CollisionComponent>(second).resting = 0;
+        }
     }
 
     static void RespawnPlayer(EntityManager<Components...>& entities, EntityID id) {
@@ -348,7 +384,7 @@ private:
 
     static void TriggerScreenShake(EntityManager<Components...>& entities, CollisionSide side,
                                    float impactSpeed) {
-        const float magnitude = std::min(8.0F, impactSpeed * 0.25F);
+        const float magnitude = std::min(kMaxShakeMagnitude, impactSpeed * 0.18F);
         Point2D offset;
         switch (side) {
             case CollisionSide::Left: offset.x = magnitude; break;
@@ -359,15 +395,21 @@ private:
 
         for (EntityID id = 0; id < entities.GetEntityCount(); ++id) {
             if (entities.IsValid(id) && entities.template HasComponent<CameraComponent>(id)) {
-                entities.template AddComponent<CameraShake>(id, CameraShake{4, offset});
+                if (entities.template HasComponent<CameraShake>(id)) {
+                    const CameraShake& current = entities.template GetComponent<CameraShake>(id);
+                    const Point2D currentOffset = current.GetOffset();
+                    if (currentOffset.Dot(currentOffset) > offset.Dot(offset)) return;
+                }
+                entities.template AddComponent<CameraShake>(id,
+                    CameraShake{kShakeFrames, offset, kShakeFrames});
                 return;
             }
         }
     }
 
     static void DampStarVelocity(MovementComponent& movement) {
-        movement.velocity.x *= kStarBounceDamping;
-        movement.velocity.y *= kStarBounceDamping;
+        movement.velocity.x *= kStarStarDamping;
+        movement.velocity.y *= kStarStarDamping;
         if (std::fabs(movement.velocity.x) < kMinStarSpeed) movement.velocity.x = 0.0F;
         if (std::fabs(movement.velocity.y) < kMinStarSpeed) movement.velocity.y = 0.0F;
     }

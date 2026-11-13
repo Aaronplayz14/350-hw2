@@ -10,6 +10,11 @@
 #include <vector>
 
 #include "Component.h"
+#include "CollisionLateSystem.h"
+#include "CollisionSystem.h"
+#include "GravitySystem.h"
+#include "MovementSystem.h"
+#include "SpawnSystem.h"
 #include "ECSEngine.h"
 #include "Entity.h"
 #include "EntityManager.h"
@@ -474,6 +479,104 @@ void TestScoreSystem() {
           "negative scores display as zero");
 }
 
+// Simulate the real system order without creating a graphics window.
+void TestStarSettlingAndShake() {
+    using View = TestEngineView<ECSEngine::LocationComponent, ECSEngine::MovementComponent,
+        ECSEngine::CollisionComponent, ECSEngine::GravityComponent, ECSEngine::RespawnComponent,
+        ECSEngine::ScoreComponent, ECSEngine::CameraComponent, ECSEngine::CameraShake,
+        ECSEngine::SpawnComponent, ECSEngine::SpriteComponent>;
+    using namespace ECSEngine;
+    View view;
+    auto& entities = view.GetEntityManager();
+    const auto addTile = [&](float x, float y, float width) {
+        const EntityID id = entities.CreateEntity("tile");
+        entities.AddComponent<LocationComponent>(id, LocationComponent{Point2D(x, y)});
+        CollisionComponent collision{};
+        collision.staticEntity = 1;
+        collision.collisionBox = Rect(0.0F, 0.0F, width, 64.0F);
+        entities.AddComponent<CollisionComponent>(id, collision);
+        return id;
+    };
+    const EntityID floor = addTile(-1000.0F, 200.0F, 2000.0F);
+    const EntityID star = SpawnSystem<LocationComponent, MovementComponent, CollisionComponent,
+        GravityComponent, RespawnComponent, ScoreComponent, CameraComponent, CameraShake,
+        SpawnComponent, SpriteComponent>::CreateStar(entities, 0, Point2D(0.0F, 0.0F),
+                                                    Point2D(5.0F, 0.0F));
+    using Snapshot = CollisionLateSystem<LocationComponent, MovementComponent, CollisionComponent,
+        GravityComponent, RespawnComponent, ScoreComponent, CameraComponent, CameraShake,
+        SpawnComponent, SpriteComponent>;
+    using Gravity = GravitySystem<LocationComponent, MovementComponent, CollisionComponent,
+        GravityComponent, RespawnComponent, ScoreComponent, CameraComponent, CameraShake,
+        SpawnComponent, SpriteComponent>;
+    using Movement = MovementSystem<LocationComponent, MovementComponent, CollisionComponent,
+        GravityComponent, RespawnComponent, ScoreComponent, CameraComponent, CameraShake,
+        SpawnComponent, SpriteComponent>;
+    using Collisions = CollisionSystem<LocationComponent, MovementComponent, CollisionComponent,
+        GravityComponent, RespawnComponent, ScoreComponent, CameraComponent, CameraShake,
+        SpawnComponent, SpriteComponent>;
+    const auto tick = [&] {
+        Snapshot{}.Run(&view);
+        Gravity{}.Run(&view);
+        Movement{}.Run(&view);
+        Collisions{}.Run(&view);
+    };
+    bool bounced = false;
+    for (int frame = 0; frame < 300; ++frame) {
+        tick();
+        const Point2D velocity = entities.GetComponent<MovementComponent>(star).velocity;
+        bounced = bounced || velocity.y < 0.0F;
+        Check(velocity.y >= -3.4F, "star floor rebounds stay small");
+        if (frame > 240) {
+            Check(velocity == Point2D(), "star stays still after settling");
+            Check(entities.GetComponent<CollisionComponent>(star).onGround,
+                  "settled star retains floor contact");
+        }
+    }
+    Check(bounced, "falling star initially bounces before settling");
+    Check(entities.GetComponent<CollisionComponent>(star).resting, "star reaches resting state");
+    entities.RemoveEntity(floor);
+    tick();
+    Check(entities.GetComponent<MovementComponent>(star).velocity.y > 0.0F,
+          "settled star falls when floor support disappears");
+    Check(!entities.GetComponent<CollisionComponent>(star).resting,
+          "unsupported star leaves resting state");
+
+    const EntityID spawner = addTile(0.0F, 200.0F, 64.0F);
+    entities.AddComponent<SpawnComponent>(spawner, SpawnComponent{});
+    entities.GetComponent<LocationComponent>(star).loc = Point2D(0.0F, 180.0F);
+    entities.GetComponent<MovementComponent>(star).velocity = Point2D(0.0F, 4.0F);
+    tick();
+    Check(entities.GetComponent<MovementComponent>(star).velocity.y > 0.0F,
+          "stars pass through spawner without bouncing");
+
+    const EntityID player = entities.CreateEntity("player");
+    entities.AddComponent<LocationComponent>(player, LocationComponent{Point2D(0.0F, 270.0F)});
+    entities.AddComponent<MovementComponent>(player, MovementComponent{Point2D(0.0F, -12.0F)});
+    CollisionComponent playerCollision{};
+    playerCollision.collisionBox = Rect(0.0F, 0.0F, 48.0F, 64.0F);
+    entities.AddComponent<CollisionComponent>(player, playerCollision);
+    const EntityID camera = entities.CreateEntity("camera");
+    entities.AddComponent<CameraComponent>(camera, CameraComponent{});
+    tick();
+    Check(entities.GetComponent<CollisionComponent>(player).onCeiling,
+          "player cannot jump through spawner from below");
+    Check(entities.GetComponent<MovementComponent>(player).velocity.y == 0.0F,
+          "spawner stops player's upward movement");
+    Check(entities.HasComponent<CameraShake>(camera), "player impact starts camera shake");
+
+    CameraShake shake{14, Point2D(4.0F, 0.0F), 14};
+    bool reversed = false;
+    for (; shake.frameLimit > 0; --shake.frameLimit) {
+        const Point2D sample = shake.GetOffset();
+        reversed = reversed || sample.x < 0.0F;
+        Check(std::fabs(sample.x) <= 4.0F && sample.y == 0.0F,
+              "shake is bounded and follows collision direction");
+        if (shake.frameLimit <= 3) Check(std::fabs(sample.x) < 0.2F, "shake fades smoothly");
+    }
+    Check(reversed, "camera shake oscillates instead of holding a fixed offset");
+    Check(shake.GetOffset() == Point2D(), "expired camera shake returns exactly to zero");
+}
+
 }  // namespace
 
 //-----------------------------------------------------------------------
@@ -492,6 +595,7 @@ int main(int argc, char* argv[]) {
     TestSoundManager();
     TestSpriteManager();
     TestScoreSystem();
+    TestStarSettlingAndShake();
 
     if (gFailures != 0) {
         std::cerr << gFailures << " check(s) failed\n";
