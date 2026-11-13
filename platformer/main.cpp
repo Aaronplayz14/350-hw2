@@ -416,10 +416,10 @@ int main(int argc, char* argv[]) {
     sm.AddSystem(std::make_unique<ECSEngine::GravitySystem<COMPONENTS>>());
     sm.AddSystem(std::make_unique<ECSEngine::MovementSystem<COMPONENTS>>());
     sm.AddSystem(std::make_unique<ECSEngine::CollisionSystem<COMPONENTS>>());
-    sm.AddSystem(std::make_unique<ECSEngine::SpawnSystem<COMPONENTS>>());
     sm.AddSystem(std::make_unique<ECSEngine::ScoreSystem<COMPONENTS>>());
     sm.AddSystem(std::make_unique<ECSEngine::CameraSystem<COMPONENTS>>());
     sm.AddSystem(std::make_unique<ECSEngine::SpriteSystem<COMPONENTS>>());
+    sm.AddSystem(std::make_unique<ECSEngine::SpawnSystem<COMPONENTS>>());
 
     engine.Run();
     return 0;
