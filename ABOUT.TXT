@@ -69,11 +69,11 @@ Implementation notes
   EntityManager owns components; SoundManager/SpriteManager own loaded media.
 - The scene loads sky.map before world.map. Type-1 dictionaries may omit
   collision rectangles; type-2 entries supply local collision bounds.
-- Spike respawning is disabled: lowercase 'x' spike/saw tiles and uppercase
-  'X' tiles are solid map geometry with no damage flag.
+- Spike respawning is enabled: lowercase 'x' spike/saw tiles and uppercase
+  'X' tiles carry damage flags.
   Spike bounds are clipped to the drawn tile, removing the dictionary's
   one-pixel overhang that otherwise creates invisible wall-side ledges.
-  Contact resolves against the local surface instead of returning to spawn.
+  Contact returns the player to its configured starting spawn with zero velocity.
 - Spawner tiles are solid to the player and ignored by stars. The current
   spawn budget is finite (five events per spawner); timing is frame-based.
 - Stars launch at 3-5 world units/frame, accelerate downward by 0.6, and have

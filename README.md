@@ -62,7 +62,7 @@ Run from the repository root so asset-dependent checks can find `assets/`.
 The test executable covers component storage, entity lifetimes and id reuse,
 system order/exit handling, sound/sprite ownership, score digits, star
 settling, lost support, spawner interactions, spike-side wall slides and
-non-respawning spike contacts from several directions, floor-seam landings and direction
+spike respawning from several directions, floor-seam landings and direction
 changes after landing, and shake samples. It returns
 nonzero on a failed check. Expected missing-file messages exercise resource
 failure handling. Some asset success checks skip when assets cannot be found;
