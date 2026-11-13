@@ -12,13 +12,28 @@
 
 namespace ECSEngine {
 
+// TEMP (Travis): Extra field notes for the camera pass. These comments are
+// intentionally temporary and can be removed once the camera behavior is
+// implemented and documented in the usual style.
 struct CameraComponent {
-    Point2D position;  // [world coordinates] position in world coordinates
+    Point2D position;  // [world coordinates] center of the camera view
+
+    // How many world units one screen pixel represents. The platformer uses
+    // 1.0 so world coordinates and pixels line up directly.
     float worldUnitsPerPixel;
-    Rect hardExclusion;  // [screen coordinates] Area where the camera is not allowed to go
-                         // (negative of this rect)
-    Rect softExclusion;  // [screen coordinates] Area where the camera is allowed to go (but will
-                         // scroll out)
+
+    // Screen-space exclusion region from the original component design. The
+    // current level leaves it empty; it is available if the camera needs an
+    // explicit no-go area.
+    Rect hardExclusion;
+
+    // Screen-space region where the camera may move. The current level leaves
+    // it empty; it can be used for the slow-follow bands described in the
+    // project requirements.
+    Rect softExclusion;
+
+    // Follow speed. A value of 0 currently snaps; values above 0 are intended
+    // for tweening the camera toward the target.
     float speed;
 };
 

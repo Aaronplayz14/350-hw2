@@ -30,14 +30,9 @@ public:
 
             locationComponent.loc += movementComponent.velocity;
 
-            if (entities.template HasComponent<CollisionComponent>(id)) {
-                CollisionComponent& collisionComponent = entities.template GetComponent<CollisionComponent>(id);
-                collisionComponent.onCeiling = 0;
-                collisionComponent.onGround = 0;
-                collisionComponent.onRightWall = 0;
-                collisionComponent.onLeftWall = 0;
-            }
-
+            // Collision flags are now cleared by CollisionSystem instead of
+            // here. InputSystem needs last frame's flags before CollisionSystem
+            // runs, and CollisionSystem needs them to detect a fresh landing.
         }
 
         return kContinue; 

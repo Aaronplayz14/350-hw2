@@ -82,13 +82,13 @@ std::string JoinPath(const std::string& directory, const std::string& file) {
  * @param path Resource directory containing the map and its textures.
  * @param file Map filename relative to path.
  * @param info Receives the map header information.
- * @param spawnerSprite Sprite used by 'S' spawner cells.
+ * @param starSprite Sprite used by stars created from 'S' spawner cells.
  * @return true when the map was loaded; false when the file is missing or
  *         malformed.
  */
 //-----------------------------------------------------------------------
 bool LoadMap(Engine& engine, const std::string& path, const std::string& file, MapInfo& info,
-             ECSEngine::SpriteID spawnerSprite) {
+             ECSEngine::SpriteID starSprite) {
     const std::string fullPath = JoinPath(path, file);
     std::ifstream input(fullPath);
     if (!input.is_open()) {
@@ -223,10 +223,10 @@ bool LoadMap(Engine& engine, const std::string& path, const std::string& file, M
                 ECSEngine::SpawnComponent spawn{};
                 spawn.entityID = entity;
                 spawn.spawnType = "star";
-                spawn.spawnTextureID = spawnerSprite;
+                spawn.spawnTextureID = starSprite;
                 spawn.timeToNextSpawn = 60;
                 spawn.timeBetweenSpawns = 120;
-                spawn.totalSpawns = 3;
+                spawn.totalSpawns = 5;
                 entities.AddComponent<ECSEngine::SpawnComponent>(entity, spawn);
             }
         }
@@ -271,15 +271,19 @@ int main(int argc, char* argv[]) {
     // The level maps are reconstructed from the object-map example in the
     // project requirements because the Canvas map files are not in the repo.
     ECSEngine::SpriteManager& sprites = engine.GetSpriteManager();
-    const ECSEngine::SpriteID spawnerSprite = sprites.RegisterTexture(
+
+    // The star and spawner both come from the provided tile sheet. The star is
+    // the yellow collectable tile at grid cell (11, 6); the spawner tile keeps
+    // whatever sprite its map dictionary entry supplies.
+    const ECSEngine::SpriteID starSprite = sprites.RegisterTexture(
         JoinPath(gResourcePath, "spritesheet-tiles-default.png"),
-        ECSEngine::Rect(0.0f, 64.0f, 64.0f, 64.0f));
+        ECSEngine::Rect(704.0f, 384.0f, 64.0f, 64.0f));
 
     MapInfo backgroundInfo;
     MapInfo objectInfo;
     try {
-        LoadMap(engine, gResourcePath, "map-background.txt", backgroundInfo, spawnerSprite);
-        LoadMap(engine, gResourcePath, "map-objects.txt", objectInfo, spawnerSprite);
+        LoadMap(engine, gResourcePath, "map-background.txt", backgroundInfo, starSprite);
+        LoadMap(engine, gResourcePath, "map-objects.txt", objectInfo, starSprite);
     } catch (const std::exception& error) {
         std::cerr << "WARNING: could not load the level maps: " << error.what() << '\n';
     }
@@ -320,14 +324,21 @@ int main(int argc, char* argv[]) {
     entities.AddComponent<ECSEngine::CameraFollower>(player,
                                                      ECSEngine::CameraFollower{player});
 
+    // Hand-place one star above the left-hand wall section. The requirement
+    // allows a test star outside the normal spawner path so wall jumping over
+    // the wall can be exercised immediately.
+    ECSEngine::SpawnSystem<COMPONENTS>::CreateStar(
+        entities, starSprite, ECSEngine::Point2D(704.0f, 384.0f),
+        ECSEngine::Point2D(0.0f, 0.0f));
+
     // Set up three screen-space digit entities for the score display. The
-    // digit textures are placeholders chosen from the tile sheet; replacing
-    // them with a numeral sheet later only requires changing these ids.
+    // numeral sprites are a small generated sheet so the score reads correctly
+    // without relying on tiles that only look like numbers.
     ECSEngine::ScoreComponent score{};
     score.score = 0;
     for (int digit = 0; digit < 10; ++digit) {
         score.digitTextureID[digit] = sprites.RegisterTexture(
-            JoinPath(gResourcePath, "spritesheet-tiles-default.png"),
+            JoinPath(gResourcePath, "spritesheet-digits-default.png"),
             ECSEngine::Rect(static_cast<float>(digit * 64), 0.0f, 64.0f, 64.0f));
     }
 
@@ -351,6 +362,11 @@ int main(int argc, char* argv[]) {
 
     // Setup Camera. The x position follows the player; y stays centered on the
     // map so the full 12-tile height is visible in the 768px window.
+    //
+    // TEMP (Travis): The exclusion rectangles and speed are left at their
+    // neutral values here on purpose. They belong to the camera pass that still
+    // needs the 10% hard-follow band, the 10-30% slow-follow bands, and the
+    // center-40% settle behavior from the project requirements.
     ECSEngine::WindowManager& windows = engine.GetWindowManager();
     windows.SetWorldScale(1.0f);
 
