@@ -74,9 +74,9 @@ the current collision box are offsets from that origin. The saved previous
 collision box is already in world coordinates. World positions use positive
 x to the right and positive y downward. Movement is world units per frame,
 acceleration is velocity change per frame, and gameplay timers count frames.
-The 30 FPS limit is a target, not a delta-time simulation. Trav's current
+The 30 FPS limit is a target, not a delta-time simulation. The current
 settings use a 30-frame dash cooldown, 15-frame dash duration, and a wall-slide
-cap of 3 before gravity. This review preserves those movement values.
+cap of 3 before gravity.
 
 WindowManager's point/rectangle conversions include center translation and
 scale; scalar conversions scale lengths only. Set a positive world-units-per-
@@ -96,8 +96,8 @@ screen-space score sprites bypass that conversion.
 | Score | Score value, numeral SpriteIDs, and three display EntityIDs. ScoreSystem skips missing display entities. |
 | Spawn | Spawner EntityID, supported type string, SpriteID, countdown, interval, and remaining event budget. |
 
-Every component is defined in its own header, including the additional
-RespawnComponent in the full assignment. LocationComponent.h and
+Every component is defined in its own header, including RespawnComponent.
+LocationComponent.h and
 CameraComponent.h include their former companion headers for source
 compatibility; they no longer contain the companion definitions themselves.
 Component ids remain non-owning and this header split adds no runtime state.
@@ -123,8 +123,7 @@ The current game executes the following sequence:
 9. SpriteSystem clears and draws sprites into the back buffer.
 10. SpawnSystem creates ready stars, which begin physics and drawing next frame.
 
-This preserves Travis's updated registration order and matches the order in
-the assignment. After systems finish, the engine draws optional debug
+After systems finish, the engine draws optional debug
 overlays and calls display() exactly once. Both sprites and collision outlines
 use the same world-to-window conversion, including camera following and shake.
 The render handoff avoids running the frame limiter twice when F1 is enabled.
@@ -133,4 +132,4 @@ The engine pauses simulation while continuing to poll events; single-step runs
 one complete system sequence. Audio is accessed by registered names with
 `HasSound` checks in gameplay, so an unavailable optional sound does not stop a
 system. Resource loading during setup can warn or throw; a partial map load is
-not rolled back. See ABOUT.TXT for current behavior and validation limits.
+not rolled back. See ABOUT.TXT for implementation notes.

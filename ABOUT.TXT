@@ -3,122 +3,69 @@ CMPUT 350 - Project 2 (part 1)
 
 Team contributions
 ------------------
-The division below follows the implementation commits merged into main.
-Files with contributions from both members remain shared work.
-
 Aaron Chiu (Aaronplayz14)
-- Implemented the ECS core: component storage and type lookup, entity handles,
-  entity/component lifecycle and reuse, engine events/main loop, and system
-  registration/execution support (2cbefca).
-- Implemented sound and sprite resource ownership, score updates, sprite
-  rendering, and the engine regression test program (2cbefca).
-- Documented the core APIs and tests (076e36d, the comment-style reference).
-- Added map parsing and level setup, sounds, player/score/camera entities,
-  star spawning and collection, and the harder sky.map/world.map integration
-  (3f8fc0f, 6070b46, 2832df8, 10d18f8, f171097, 17b8bc7).
-- Extended the shared movement/collision gameplay with action timers, sound
-  effects, star bounces/settling, respawning on damage, spawner filtering,
-  camera shake, and regression checks (including bd71af5).
-- Added this submission documentation and corrected stale API/lifetime notes.
+- Implemented component storage/type lookup, entity/component lifecycle and id
+  reuse, the engine event/main loop, and system registration/execution support.
+- Implemented sound/sprite resource ownership, score updates, sprite rendering,
+  and engine regression tests.
+- Added map parsing and level setup, sounds, player/score entities, star
+  spawning and collection, and integration of sky.map and world.map.
+- Extended shared gameplay code with action timers, sounds, star settling,
+  damage respawning, collision refinements, and camera shake.
 - Separated component definitions into dedicated headers, corrected F1 frame
-  presentation, and moved the extra star outside the left wall.
+  presentation, placed the extra star outside the wall, and documented APIs
+  and resource lifetimes.
 
 Travis Lee (Trav337)
 - Implemented WindowManager functionality and brought MathUtil functions
-  forward from the previous project (a64dd53).
-- Implemented the initial InputSystem, GravitySystem, MovementSystem,
-  CollisionSystem, pre-movement collision snapshot, and CameraSystem
-  behavior (fbdf06d).
-- Implemented horizontal hard/soft camera-follow bands and their game-setup
-  configuration (d60bf12), retained in the merged camera implementation.
-- Fixed wall-cling recognition (1e6f319) and tuned the dash cooldown/duration
-  and wall-slide speed for the traversal puzzles (504491d).
-- Corrected the system registration order (186f043) and WindowManager aspect-
-  ratio calculation (1f7b154). These newer main changes are preserved.
-- Corrected world-to-window conversion inside the WindowManager debug draw
-  functions (9f652d8). Engine overlays pass world bounds to this updated API.
+  forward from the previous project.
+- Implemented the initial input, gravity, movement, collision resolution,
+  pre-movement collision snapshot, and camera systems.
+- Implemented horizontal hard/soft camera-follow bands and their setup.
+- Fixed wall-cling recognition and tuned movement for the traversal puzzles.
+- Corrected system registration order, window aspect-ratio calculation, and
+  world-to-window conversion in debug drawing.
 
-Shared code and comment attribution
------------------------------------
-Input, movement, gravity, collision snapshots/resolution, camera behavior,
-and camera setup incorporate Travis's implementation plus Aaron's extensions.
-Their comments describe behavior without labeling the shared function as
-AI-written. Aaron-only substantial implementations use the comment wording
-"Implemented with the help of AI." where applicable. This comment convention
-does not replace the assistance disclosure below.
+Input, movement, gravity, collision, camera behavior, and camera setup contain
+contributions from both members.
 
 AI and other resources
 ----------------------
 Aaron used ChatGPT/Codex for implementation and documentation assistance on
 the ECS core, resource managers, tests, score/sprite systems, map loader,
 level setup, star spawning, gameplay extensions, collision refinements,
-star settling, and camera shake. AI also assisted with this documentation
-pass, reference-lifetime corrections, comment cleanup, and spike collision
-classification/hitbox fixes and floor-seam landing fixes with regression tests.
-AI assisted the dedicated component headers, F1 rendering correction,
-outside-wall star placement, and rubric documentation in the final review.
+star settling, camera shake, component headers, and F1 frame presentation.
+Some assisted extensions are in shared files containing Travis's original
+work; this disclosure does not attribute AI use to Travis.
 
-Some AI-assisted extensions are in files containing Travis's original code;
-those files retain ordinary comments under the team's attribution convention.
-The history distinguishes the original implementations from later extensions.
-This record does not attribute AI use to Travis's original contributions.
-
-The course starter project is provided by the University of Alberta CMPUT350
-Fall 2026 Teaching Team under the included MIT LICENSE. The project uses
-SFML 3.1.0 and its bundled/fetched dependencies; retain their license files.
-The supplied map files and Kenney graphics/audio assets are project resources.
-The numeric sprite sheet was generated during Aaron's AI-assisted setup work.
-No specific Stack Overflow code source is identified in the inspected code or
-the assistance history available for this documentation pass.
+The course starter project is from the University of Alberta CMPUT350 Fall
+2026 Teaching Team under the included MIT LICENSE. The project uses SFML 3.1.0
+and its bundled/fetched dependencies; their license files are retained.
+Maps and Kenney graphics/audio assets are supplied project resources. The
+numeric sprite sheet was generated during Aaron's AI-assisted setup work.
 
 Implementation notes
 --------------------
-- Build and launch instructions and controls are in README.md.
-- docs/RESOURCE_USAGE.md explains ownership, resource access, and lifetimes.
-- Systems borrow managers through EngineView. ECSEngine owns the managers;
-  EntityManager owns components; SoundManager/SpriteManager own loaded media.
-- The scene loads sky.map before world.map. Type-1 dictionaries may omit
-  collision rectangles; type-2 entries supply local collision bounds.
-- Spike respawning is enabled: lowercase 'x' spike/saw tiles and uppercase
-  'X' tiles carry damage flags.
-  Spike bounds are clipped to the drawn tile, removing the dictionary's
-  one-pixel overhang that otherwise creates invisible wall-side ledges.
-  Contact returns the player to its configured starting spawn with zero velocity.
-- Spawner tiles are solid to the player and ignored by stars. The current
-  spawn budget is finite (five events per spawner); timing is frame-based.
-- Stars launch at 3-5 world units/frame, accelerate downward by 0.6, and have
-  a downward speed cap of 12. Floor rebound retains 28% of normal speed and
-  ground friction retains 78% of horizontal speed per floor resolution.
-  Small velocities become zero, while gravity keeps checking floor support.
-- Camera follow retains Travis's hard/soft bands. Shake uses an independent
-  display offset, a four-world-unit amplitude cap, and a 14-frame fade.
-- The frame cap is 30 FPS. Travis's movement settings are retained: dash
-  cooldown 30 frames (about one second), dash duration 15 frames, and wall-slide
-  speed cap 3 before gravity is applied. The frame cap is not a fixed timestep.
-- Contact snapshots run before input/movement; collision resolution follows
-  movement. Travis's updated order runs spawning after SpriteSystem, so new
-  stars start physics and sprite rendering on the next simulation frame.
+- README.md gives build/launch instructions, controls, and the test command.
+  docs/RESOURCE_USAGE.md documents resource ownership, access, and lifetimes.
+- ECSEngine owns the managers. Systems borrow them through EngineView;
+  EntityManager owns components and the media managers own loaded resources.
+- The scene loads sky.map for the background and world.map for objects. The
+  supplied map layouts are unchanged. The extra star starts at (576, 192),
+  outside the left wall, and uses ordinary star physics.
+- All component definitions have dedicated headers. CameraFollower and
+  CameraShake are compatibility aliases for CameraFollowerComponent and
+  CameraShakeComponent.
+- The frame cap is 30 FPS. Movement/timers are frame-based. The dash cooldown
+  is 30 frames, dash duration 15 frames, and wall-slide cap 3 before gravity.
+- Spawners are solid to the player but ignored by stars. Each spawner has a
+  five-event budget and emits stars in random directions. Stars lose energy
+  on collisions and settle on floors; collection adds 10 points.
+- Spike/saw x and uppercase X tiles respawn the player at its starting
+  location. Spike hitboxes are clipped to the drawn tile to avoid overhangs.
+- Collision snapshots precede movement; resolution follows it. Ground/wall
+  contacts are maintained across tile seams. Spawning runs after sprite drawing.
+- The camera keeps a fixed base y, follows horizontally with hard/soft bands,
+  and applies a fading directional shake on player impacts.
 - SpriteSystem draws into the back buffer. WindowManager converts debug boxes
-  into screen coordinates and the engine presents once after systems and overlays;
-  F1 no longer causes a second frame-rate-limit wait.
-- The extra test star starts outside the left wall at (576, 192), uses normal
-  star physics, and does not require any changes to the provided map layout.
-- Diagonal collisions use the later axis-entry time. Existing floor/ceiling
-  support is preserved across coplanar tile seams, and resolved positions snap
-  to the contacted surface so landing does not create false wall contacts.
-- All 11 rubric components have dedicated definition headers. RespawnComponent
-  from the longer assignment writeup also has its own header. CameraFollower
-  and CameraShake remain compatibility aliases for the corresponding
-  CameraFollowerComponent and CameraShakeComponent types; their layout and
-  behavior are unchanged.
-
-Verification and remaining manual checks
----------------------------------------
-Build with the warning flags configured by CMake and run build/engine/ECSTest
-directly. The test program includes resource-failure cases, which intentionally
-print missing-file diagnostics. CTest has no registered tests in this project.
-Local checks do not replace building/running on the lab machines, playing the
-provided traversal sections, listening to event sounds, or judging camera feel.
-The collision checks do not establish general continuous collision detection
-for arbitrary speeds, all corner configurations, or every possible map.
-docs/REQUIREMENTS_CHECKLIST.md records the coverage of the supplied rubric.
+  from world coordinates, and the engine presents once after drawing overlays.

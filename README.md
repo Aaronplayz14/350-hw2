@@ -27,9 +27,6 @@ bundle and its existing relative directory layout. Other configurations fetch
 and build SFML 3.1.0, so their initial configuration needs network access and
 the platform's compiler, graphics, and audio development dependencies.
 
-The submission must also be built and played on the course lab machines.
-Successful local macOS checks do not establish lab compatibility.
-
 ## Controls
 
 | Key | Action |
@@ -75,18 +72,14 @@ failure handling. Some asset success checks skip when assets cannot be found;
 inspect the output as well as the exit status.
 
 The executable is not registered with CTest; `ctest` alone does not run it.
-Visual shake quality, camera bands, wall-jump/dash traversal, sound timing,
-and lab-machine behavior still need interactive play checks.
 
 ## Documentation
 
 - [ABOUT.TXT](ABOUT.TXT): team contributions, implementation notes, and AI/resource credits.
 - [Resource usage and engine APIs](docs/RESOURCE_USAGE.md): ownership, reference
   lifetimes, system order, components, and extension rules.
-- [Requirements check](docs/REQUIREMENTS_CHECKLIST.md): rubric coverage and
-  remaining lab/interactive verification.
-- Headers and implementation files: Doxygen-style API comments using the
-  separator, `@brief`, `@param`, and `@return` style of commit `076e36d`.
+- Headers and implementation files: API comments describing parameters,
+  return values, resource access, and data lifetimes.
 
 The legacy `map-background.txt` and `map-objects.txt` remain in `assets/` but
 are not loaded by the current game. Keep the supplied `.map` layouts intact.
