@@ -781,6 +781,135 @@ void TestLandingTileSeams() {
     }
 }
 
+//-----------------------------------------------------------------------
+/**
+ * @brief Verifies wall-slide contact and jump timing through the full input pipeline.
+ *
+ * Uses tiled walls, both approach directions, and several delays before Z.
+ * Checks rising across wall seams, release of direction, and moving away so
+ * persistent contact cannot turn into a wall-jump permission after detaching.
+ *
+ * Implemented with the help of AI.
+ */
+//-----------------------------------------------------------------------
+void TestWallJumpContact() {
+    using namespace ECSEngine;
+    using View = TestEngineView<LocationComponent, MovementComponent, CollisionComponent,
+        GravityComponent, InputComponent, RespawnComponent, ScoreComponent,
+        CameraComponent, CameraShake, SpawnComponent>;
+    using Snapshot = CollisionLateSystem<LocationComponent, MovementComponent, CollisionComponent,
+        GravityComponent, InputComponent, RespawnComponent, ScoreComponent,
+        CameraComponent, CameraShake, SpawnComponent>;
+    using Input = InputSystem<LocationComponent, MovementComponent, CollisionComponent,
+        GravityComponent, InputComponent, RespawnComponent, ScoreComponent,
+        CameraComponent, CameraShake, SpawnComponent>;
+    using Gravity = GravitySystem<LocationComponent, MovementComponent, CollisionComponent,
+        GravityComponent, InputComponent, RespawnComponent, ScoreComponent,
+        CameraComponent, CameraShake, SpawnComponent>;
+    using Movement = MovementSystem<LocationComponent, MovementComponent, CollisionComponent,
+        GravityComponent, InputComponent, RespawnComponent, ScoreComponent,
+        CameraComponent, CameraShake, SpawnComponent>;
+    using Collisions = CollisionSystem<LocationComponent, MovementComponent, CollisionComponent,
+        GravityComponent, InputComponent, RespawnComponent, ScoreComponent,
+        CameraComponent, CameraShake, SpawnComponent>;
+    for (bool wallOnRight : {false, true}) {
+        for (bool reverseTiles : {false, true}) {
+            for (int delay = 1; delay <= 8; ++delay) {
+                View view;
+                auto& entities = view.GetEntityManager();
+                for (int row = 0; row < 10; ++row) {
+                    const EntityID tile = entities.CreateEntity("wall");
+                    const int wallRow = reverseTiles ? 9 - row : row;
+                    entities.AddComponent<LocationComponent>(tile, LocationComponent{
+                        Point2D(wallOnRight ? 128.0F : 0.0F, wallRow * 64.0F)});
+                    entities.AddComponent<CollisionComponent>(tile,
+                        MakeMapCollision('H', Rect(0.0F, 0.0F, 64.0F, 64.0F), 64.0F, 64.0F));
+                }
+                const EntityID player = entities.CreateEntity("player");
+                entities.AddComponent<LocationComponent>(player,
+                    LocationComponent{Point2D(wallOnRight ? 70.0F : 58.0F, 128.0F)});
+                entities.AddComponent<MovementComponent>(player,
+                    MovementComponent{Point2D(0.0F, 2.0F)});
+                CollisionComponent box{};
+                box.collisionBox = Rect(8.0F, 0.0F, 48.0F, 64.0F);
+                entities.AddComponent<CollisionComponent>(player, box);
+                entities.AddComponent<InputComponent>(player, InputComponent(player));
+                entities.AddComponent<GravityComponent>(player,
+                    GravityComponent(Point2D(0.0F, 2.0F)));
+                const unsigned int intoWall = wallOnRight ? Key::Right : Key::Left;
+                const unsigned int awayFromWall = wallOnRight ? Key::Left : Key::Right;
+                const auto tick = [&](bool into, bool away, bool jump) {
+                    auto& input = entities.GetComponent<InputComponent>(player);
+                    input.lastKeydown = input.keydown;
+                    input.keydown.reset();
+                    input.keydown[intoWall] = into;
+                    input.keydown[awayFromWall] = away;
+                    input.keydown[Key::Z] = jump;
+                    Snapshot{}.Run(&view);
+                    Input{}.Run(&view);
+                    Gravity{}.Run(&view);
+                    Movement{}.Run(&view);
+                    Collisions{}.Run(&view);
+                };
+                const auto checkWall = [&] {
+                    const auto& contact = entities.GetComponent<CollisionComponent>(player);
+                    Check(wallOnRight ? contact.onRightWall : contact.onLeftWall,
+                          "flush wall contact persists across frames and vertical tile seams");
+                    Check(!contact.onGround && !contact.onCeiling,
+                          "wall sliding/rising does not create false floor or ceiling contacts");
+                };
+                // Establish contact, then wait different frame counts before
+                // jumping to catch the old every-other-frame loss of contact.
+                tick(true, false, false);
+                checkWall();
+                for (int frame = 0; frame < delay; ++frame) {
+                    tick(true, false, false);
+                    checkWall();
+                    Check(entities.GetComponent<MovementComponent>(player).velocity.y <= 8.201F,
+                          "wall-slide fall cap remains active each frame before gravity");
+                }
+                const float beforeJump = entities.GetComponent<LocationComponent>(player).loc.y;
+                tick(true, false, true);
+                Check(entities.GetComponent<MovementComponent>(player).velocity.y < 0.0F &&
+                      entities.GetComponent<LocationComponent>(player).loc.y < beforeJump,
+                      "fresh Z press wall-jumps after any tested slide delay");
+                for (int frame = 0; frame < 3; ++frame) {
+                    tick(true, false, true);
+                    checkWall();
+                    Check(entities.GetComponent<MovementComponent>(player).velocity.y < 0.0F,
+                          "wall jump continues upward across wall tile seams");
+                }
+
+                // Merely touching the wall does not allow a jump when the
+                // player releases its direction; the input rule still applies.
+                entities.GetComponent<MovementComponent>(player).velocity.y = 2.0F;
+                tick(false, false, false);
+                tick(false, false, true);
+                Check(entities.GetComponent<MovementComponent>(player).velocity.y > 0.0F,
+                      "wall jump still requires pressing into the wall while falling");
+                const float beforeAway = entities.GetComponent<LocationComponent>(player).loc.x;
+                tick(false, true, false);
+                const auto& detached = entities.GetComponent<CollisionComponent>(player);
+                const float afterAway = entities.GetComponent<LocationComponent>(player).loc.x;
+                Check(!detached.onLeftWall && !detached.onRightWall &&
+                          (wallOnRight ? afterAway < beforeAway : afterAway > beforeAway),
+                      "moving away clears wall contact immediately without sticking");
+
+                // Once below the actual wall, holding toward it and pressing
+                // jump cannot reuse a stale contact from the previous position.
+                entities.GetComponent<LocationComponent>(player).loc.y = 650.0F;
+                entities.GetComponent<MovementComponent>(player).velocity = Point2D(0.0F, 2.0F);
+                tick(true, false, false);
+                tick(true, false, true);
+                const auto& belowWall = entities.GetComponent<CollisionComponent>(player);
+                Check(!belowWall.onLeftWall && !belowWall.onRightWall &&
+                      entities.GetComponent<MovementComponent>(player).velocity.y > 0.0F,
+                      "leaving the wall's vertical span removes wall-jump permission");
+            }
+        }
+    }
+}
+
 }  // namespace
 
 //-----------------------------------------------------------------------
@@ -802,6 +931,7 @@ int main(int argc, char* argv[]) {
     TestStarSettlingAndShake();
     TestSpikeWallContacts();
     TestLandingTileSeams();
+    TestWallJumpContact();
 
     if (gFailures != 0) {
         std::cerr << gFailures << " check(s) failed\n";
