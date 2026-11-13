@@ -38,9 +38,13 @@ class EngineView {
 public:
     virtual ~EngineView() = default;
 
+    /// @brief Borrows the sound manager while the concrete view owns it.
     virtual SoundManager& GetSoundManager() = 0;
+    /// @brief Borrows the sprite manager without transferring texture ownership.
     virtual SpriteManager& GetSpriteManager() = 0;
+    /// @brief Borrows storage; individual entity/component lookups may expire sooner.
     virtual EntityManager<Components...>& GetEntityManager() = 0;
+    /// @brief Borrows the window and coordinate-conversion manager.
     virtual WindowManager& GetWindowManager() = 0;
 };
 
@@ -77,14 +81,19 @@ public:
     /// @brief Blocks until the window closes, a system returns kExit, or Escape is pressed.
     void Run();
 
+    /// @brief Borrows the sound manager until engine destruction.
     SoundManager& GetSoundManager() override { return mSoundManager; }
 
+    /// @brief Borrows the sprite manager until engine destruction.
     SpriteManager& GetSpriteManager() override { return mSpriteManager; }
 
+    /// @brief Borrows the entity manager until engine destruction.
     EntityManager<Components...>& GetEntityManager() override { return mEntityManager; }
 
+    /// @brief Borrows the window manager until engine destruction.
     WindowManager& GetWindowManager() override { return mWindowManager; }
 
+    /// @brief Borrows the system manager; register systems before entering Run.
     SystemManager<Components...>& GetSystemManager() { return mSystemManager; }
 
     [[nodiscard]] bool IsDebugEnabled() const { return mDebug; }
@@ -141,6 +150,8 @@ private:
  * physical press produces one key-down event, and caps the loop at 60 frames
  * per second. Window creation happens before any systems are added, so a
  * failed window is visible immediately rather than after setup.
+ *
+ * Implemented with the help of AI.
  *
  * @param width Window width in pixels.
  * @param height Window height in pixels.
@@ -306,6 +317,8 @@ bool ECSEngine<Components...>::ProcessEvents() {
 //-----------------------------------------------------------------------
 /**
  * @brief Applies a key transition to every InputComponent in the world.
+ *
+ * Implemented with the help of AI.
  *
  * Each entity has its own input bitset so multiple controllable entities would
  * see the same physical keyboard state. The scancode is bounds-checked by the

@@ -36,7 +36,7 @@ public:
     /// stop after this system finishes.
     virtual tSystemReturn Run(EngineView<Components...>* scene) = 0;
 
-    /// @brief Name used for diagnostics and exit messages.
+    /// @brief Borrowed diagnostic name; implementations keep it valid through Run.
     virtual const std::string& GetName() const = 0;
 };
 
@@ -62,7 +62,10 @@ public:
      * frame. If any system returns kExit, the remaining systems are not run
      * and the caller is told to stop the game loop.
      *
+     * Implemented with the help of AI.
+     *
      * @param scene Engine view passed to every system.
+     *              Borrowed for this call; systems must not outlive its owner.
      * @return true when the frame completed, false when a system requested exit.
      */
     //-------------------------------------------------------------------

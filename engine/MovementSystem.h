@@ -10,6 +10,13 @@ public:
         return name;
     }
 
+    //-------------------------------------------------------------------
+    /**
+     * @brief Adds each entity's velocity to its location once per simulation frame.
+     * @param engine Borrowed view; moving entities must also have LocationComponent.
+     * @return kContinue; collision flags are left for CollisionSystem to update.
+     */
+    //-------------------------------------------------------------------
     tSystemReturn Run(EngineView<Components...>* engine) override {
         
         EntityManager<Components...>& entities = engine->GetEntityManager();

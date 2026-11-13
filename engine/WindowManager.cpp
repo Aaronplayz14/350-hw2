@@ -74,11 +74,11 @@ void WindowManager::SetWorldRect(const Rect& worldCameraRect) {
 }
 
 float WindowManager::WindowToWorld(float x) const { 
-    return x * mWorldUnitsPerPixel; // TODO: verify as correct implementation
+    return x * mWorldUnitsPerPixel; // Scalar conversion scales a length only.
 }
 
 float WindowManager::WorldToWindow(float x) const { 
-    return x / mWorldUnitsPerPixel; // TODO: verify as correct implementation
+    return x / mWorldUnitsPerPixel; // Scalar conversion scales a length only.
 }
 
 }  // namespace ECSEngine

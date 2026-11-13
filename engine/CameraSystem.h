@@ -29,6 +29,13 @@ public:
         return name;
     }
 
+    //-------------------------------------------------------------------
+    /**
+     * @brief Follows target locations horizontally and applies one frame of shake.
+     * @param engine Borrowed managers; CameraFollower::entityID identifies the target.
+     * @return kContinue after setting the window's display center.
+     */
+    //-------------------------------------------------------------------
     tSystemReturn Run(EngineView<Components...>* engine) override {
         
         WindowManager& windowManager = engine->GetWindowManager();

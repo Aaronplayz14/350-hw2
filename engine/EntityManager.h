@@ -60,8 +60,10 @@ public:
      * cannot leak into the new object. The name is stored on the Entity and can
      * be retrieved with Entity::GetName().
      *
+     * Implemented with the help of AI.
+     *
      * @param name Display/type name for the entity.
-     * @return Stable id of the new entity.
+     * @return Id valid for this entity's lifetime; removed ids may be reused.
      */
     //-------------------------------------------------------------------
     [[nodiscard]] EntityID CreateEntity(const std::string& name) {
@@ -89,6 +91,8 @@ public:
      * valid indices. The id is pushed onto the free list for CreateEntity to
      * reuse.
      *
+     * Implemented with the help of AI.
+     *
      * @param entity Id of the entity to remove.
      * @return None.
      */
@@ -114,6 +118,8 @@ public:
      *
      * Replacing a component reuses the component storage's free list instead
      * of growing it, so repeated AddComponent calls do not leak slots.
+     *
+     * Implemented with the help of AI.
      *
      * @param entity Target entity; must be alive.
      * @param component Component value to copy or move into storage.
@@ -259,7 +265,9 @@ public:
     /**
      * @brief Returns the entity record for an id, including invalid entities.
      * @param entity Entity id to look up.
-     * @return Pointer to the record, or nullptr when the id was never allocated.
+     * @return Borrowed pointer, or nullptr when the id was never allocated.
+     *         CreateEntity may invalidate pointers and iterators by growing
+     *         the entity vector. Removal/reuse ends the old entity's lifetime.
      */
     //-------------------------------------------------------------------
     [[nodiscard]] Entity* GetEntity(EntityID entity) {

@@ -1,0 +1,101 @@
+CMPUT 350 - Project 2 (part 1)
+============================
+
+Team contributions
+------------------
+The division below follows the implementation commits reachable from the
+Aaron branch. Files with contributions from both members remain shared work.
+
+Aaron Chiu (Aaronplayz14)
+- Implemented the ECS core: component storage and type lookup, entity handles,
+  entity/component lifecycle and reuse, engine events/main loop, and system
+  registration/execution support (2cbefca).
+- Implemented sound and sprite resource ownership, score updates, sprite
+  rendering, and the engine regression test program (2cbefca).
+- Documented the core APIs and tests (076e36d, the comment-style reference).
+- Added map parsing and level setup, sounds, player/score/camera entities,
+  star spawning and collection, and the harder sky.map/world.map integration
+  (3f8fc0f, 6070b46, 2832df8, 10d18f8, f171097, 17b8bc7).
+- Extended the shared movement/collision gameplay with action timers, sound
+  effects, star bounces/settling, respawning on damage, spawner filtering,
+  camera shake, and regression checks (including bd71af5).
+- Added this submission documentation and corrected stale API/lifetime notes.
+
+Travis Lee (Trav337)
+- Implemented WindowManager functionality and brought MathUtil functions
+  forward from the previous project (a64dd53).
+- Implemented the initial InputSystem, GravitySystem, MovementSystem,
+  CollisionSystem, pre-movement collision snapshot, and CameraSystem
+  behavior (fbdf06d).
+- Implemented horizontal hard/soft camera-follow bands and their game-setup
+  configuration (d60bf12), retained in the merged camera implementation.
+
+Shared code and comment attribution
+-----------------------------------
+Input, movement, gravity, collision snapshots/resolution, camera behavior,
+and camera setup incorporate Travis's implementation plus Aaron's extensions.
+Their comments describe behavior without labeling the shared function as
+AI-written. Aaron-only substantial implementations use the comment wording
+"Implemented with the help of AI." where applicable. This comment convention
+does not replace the assistance disclosure below.
+
+AI and other resources
+----------------------
+Aaron used ChatGPT/Codex for implementation and documentation assistance on
+the ECS core, resource managers, tests, score/sprite systems, map loader,
+level setup, star spawning, gameplay extensions, collision refinements,
+star settling, and camera shake. AI also assisted with this documentation
+pass, reference-lifetime corrections, comment cleanup, and spike collision
+classification/hitbox fixes and floor-seam landing fixes with regression tests.
+
+Some AI-assisted extensions are in files containing Travis's original code;
+those files retain ordinary comments under the team's attribution convention.
+The history distinguishes the original implementations from later extensions.
+This record does not attribute AI use to Travis's original contributions.
+
+The course starter project is provided by the University of Alberta CMPUT350
+Fall 2026 Teaching Team under the included MIT LICENSE. The project uses
+SFML 3.1.0 and its bundled/fetched dependencies; retain their license files.
+The supplied map files and Kenney graphics/audio assets are project resources.
+The numeric sprite sheet was generated during Aaron's AI-assisted setup work.
+No specific Stack Overflow code source is identified in the inspected code or
+the assistance history available for this documentation pass.
+
+Implementation notes
+--------------------
+- Build and launch instructions and controls are in README.md.
+- docs/RESOURCE_USAGE.md explains ownership, resource access, and lifetimes.
+- Systems borrow managers through EngineView. ECSEngine owns the managers;
+  EntityManager owns components; SoundManager/SpriteManager own loaded media.
+- The scene loads sky.map before world.map. Type-1 dictionaries may omit
+  collision rectangles; type-2 entries supply local collision bounds.
+- Lowercase 'x' spike/saw tiles and uppercase 'X' tiles carry damage flags.
+  Spike bounds are clipped to the drawn tile, removing the dictionary's
+  one-pixel overhang that otherwise creates invisible wall-side ledges.
+  Contact respawns the player rather than trapping it in solid spikes.
+- Spawner tiles are solid to the player and ignored by stars. The current
+  spawn budget is finite (five events per spawner); timing is frame-based.
+- Stars launch at 3-5 world units/frame, accelerate downward by 0.6, and have
+  a downward speed cap of 12. Floor rebound retains 28% of normal speed and
+  ground friction retains 78% of horizontal speed per floor resolution.
+  Small velocities become zero, while gravity keeps checking floor support.
+- Camera follow retains Travis's hard/soft bands. Shake uses an independent
+  display offset, a four-world-unit amplitude cap, and a 14-frame fade.
+- Contact snapshots run before input/movement; collision resolution follows
+  movement. Spawning currently runs before score/camera/render, so a new star
+  can be drawn immediately and starts physics on the next simulation frame.
+- Diagonal collisions use the later axis-entry time. Existing floor/ceiling
+  support is preserved across coplanar tile seams, and resolved positions snap
+  to the contacted surface so landing does not create false wall contacts.
+- Component structs are grouped in a few headers (for example, movement,
+  gravity, and respawn in LocationComponent.h); they are not all separate files.
+
+Verification and remaining manual checks
+---------------------------------------
+Build with the warning flags configured by CMake and run build/engine/ECSTest
+directly. The test program includes resource-failure cases, which intentionally
+print missing-file diagnostics. CTest has no registered tests in this project.
+Local checks do not replace building/running on the lab machines, playing the
+provided traversal sections, listening to event sounds, or judging camera feel.
+The collision checks do not establish general continuous collision detection
+for arbitrary speeds, all corner configurations, or every possible map.

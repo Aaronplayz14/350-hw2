@@ -24,17 +24,14 @@ namespace ECSEngine {
  *   letting the normal run-speed clamp cancel it immediately.
  * - wallSlideSoundTimer rate-limits the wall-slide sound while the player is
  *   holding into a wall and falling.
- *
- * TEMP (Travis): These explanatory comments are here only while the input pass
- * is being shared. They can be deleted once the input behavior is settled.
  */
 //-----------------------------------------------------------------------
 struct InputComponent {
     InputComponent(EntityID whichEntity) : entity(whichEntity), lastDash(0), dashTimer(0), wallSlideSoundTimer(0) {}
     EntityID entity;
     int lastDash;
-    int dashTimer;            // TEMP (Travis): frames left of the current dash burst.
-    int wallSlideSoundTimer;  // TEMP (Travis): rate-limits the wall-slide sound.
+    int dashTimer;            // Frames left of the current dash burst.
+    int wallSlideSoundTimer;  // Rate-limits the wall-slide sound.
     std::bitset<sf::Keyboard::ScancodeCount> keydown;
     std::bitset<sf::Keyboard::ScancodeCount> lastKeydown;
 };

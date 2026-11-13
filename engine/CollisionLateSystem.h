@@ -9,11 +9,9 @@ namespace ECSEngine {
  * @brief Saves each collision box in world coordinates before movement runs.
  *
  * Collision resolution needs to know where an entity was before this frame's
- * movement so that overlap can be resolved along the axis of least
- * penetration. This pass runs first in the system order and stores the
+ * movement so that collision resolution can identify a crossed face, falling
+ * back to the least penetration for existing overlaps. This pass stores the
  * location-adjusted box in CollisionComponent::previousCollisionBox.
- *
- * Implemented with the help of AI.
  */
 //-----------------------------------------------------------------------
 template <typename... Components>
@@ -24,6 +22,13 @@ public:
         return name;
     }
 
+    //-------------------------------------------------------------------
+    /**
+     * @brief Snapshots valid collision/location pairs before input and movement.
+     * @param engine Borrowed view; entity/component references stay local to this call.
+     * @return kContinue after copying the world-space bounds.
+     */
+    //-------------------------------------------------------------------
     tSystemReturn Run(EngineView<Components...>* engine) override {
         EntityManager<Components...>& entities = engine->GetEntityManager();
 

@@ -14,6 +14,7 @@
 #include "CollisionSystem.h"
 #include "GravitySystem.h"
 #include "MovementSystem.h"
+#include "InputSystem.h"
 #include "SpawnSystem.h"
 #include "ECSEngine.h"
 #include "Entity.h"
@@ -101,6 +102,8 @@ struct Health {
  * Checks that slot indices count up, removed slots become invalid without
  * disturbing their neighbours, and the next Add reuses a free slot instead of
  * growing capacity.
+ *
+ * Implemented with the help of AI.
  */
 //-----------------------------------------------------------------------
 void TestComponentStorage() {
@@ -141,6 +144,8 @@ void TestComponentStorage() {
  *
  * Exercises component add/replace/remove, entity removal clearing all of its
  * components, iteration over invalid slots, and reuse of freed entity ids.
+ *
+ * Implemented with the help of AI.
  */
 //-----------------------------------------------------------------------
 void TestEntityManager() {
@@ -284,6 +289,8 @@ private:
  *
  * Systems must run in insertion order, and a system returning kExit must stop
  * the manager before later systems receive their turn.
+ *
+ * Implemented with the help of AI.
  */
 //-----------------------------------------------------------------------
 void TestSystemManager() {
@@ -320,6 +327,8 @@ void TestSystemManager() {
  *
  * Error paths are checked with missing files and empty names. The success path
  * needs an .ogg asset and is skipped when the asset is not available.
+ *
+ * Implemented with the help of AI.
  */
 //-----------------------------------------------------------------------
 void TestSoundManager() {
@@ -369,6 +378,8 @@ void TestSoundManager() {
  * The same texture path must be loaded once while producing separate sprite
  * ids and sprite instances. The success path is skipped when the sprite sheet
  * is not available.
+ *
+ * Implemented with the help of AI.
  */
 //-----------------------------------------------------------------------
 void TestSpriteManager() {
@@ -421,6 +432,8 @@ void TestSpriteManager() {
  *
  * A three-digit display must show leading zeroes, clamp values above 999 to
  * 999, and display negative scores as zero.
+ *
+ * Implemented with the help of AI.
  */
 //-----------------------------------------------------------------------
 void TestScoreSystem() {
@@ -479,7 +492,16 @@ void TestScoreSystem() {
           "negative scores display as zero");
 }
 
-// Simulate the real system order without creating a graphics window.
+//-----------------------------------------------------------------------
+/**
+ * @brief Simulates star settling, lost floor support, spawners, and shake decay.
+ *
+ * Runs the real snapshot/gravity/movement/collision sequence without drawing.
+ * Shake checks cover its bounded directional sample and fade, not visual feel.
+ *
+ * Implemented with the help of AI.
+ */
+//-----------------------------------------------------------------------
 void TestStarSettlingAndShake() {
     using View = TestEngineView<ECSEngine::LocationComponent, ECSEngine::MovementComponent,
         ECSEngine::CollisionComponent, ECSEngine::GravityComponent, ECSEngine::RespawnComponent,
@@ -577,6 +599,188 @@ void TestStarSettlingAndShake() {
     Check(shake.GetOffset() == Point2D(), "expired camera shake returns exactly to zero");
 }
 
+//-----------------------------------------------------------------------
+/**
+ * @brief Reproduces spike-side ledges, false head hits, and solid-spike trapping.
+ *
+ * Uses the real world.map dictionary hitbox and the loader's collision factory.
+ * Exercises both wall sides and player contact from above, below, and beside
+ * a spike without requiring a window.
+ *
+ * Implemented with the help of AI.
+ */
+//-----------------------------------------------------------------------
+void TestSpikeWallContacts() {
+    using namespace ECSEngine;
+    using View = TestEngineView<LocationComponent, MovementComponent, CollisionComponent,
+        RespawnComponent, ScoreComponent, CameraComponent, CameraShake, SpawnComponent>;
+    using Snapshot = CollisionLateSystem<LocationComponent, MovementComponent, CollisionComponent,
+        RespawnComponent, ScoreComponent, CameraComponent, CameraShake, SpawnComponent>;
+    using Movement = MovementSystem<LocationComponent, MovementComponent, CollisionComponent,
+        RespawnComponent, ScoreComponent, CameraComponent, CameraShake, SpawnComponent>;
+    using Collisions = CollisionSystem<LocationComponent, MovementComponent, CollisionComponent,
+        RespawnComponent, ScoreComponent, CameraComponent, CameraShake, SpawnComponent>;
+    const Rect spikeDictionary(-1.0F, 10.0F, 66.0F, 44.0F);
+    const auto spike = MakeMapCollision('x', spikeDictionary, 64.0F, 64.0F);
+    Check(spike.doesDamage, "lowercase map spikes are damaging hazards");
+    Check(spike.collisionBox.topLeft == Point2D(0.0F, 10.0F) &&
+          spike.collisionBox.width == 64.0F && spike.collisionBox.height == 44.0F,
+          "spike hitbox keeps the dictionary inset without invisible side overhangs");
+    Check(MakeMapCollision('X', Rect(0.0F, 0.0F, 64.0F, 64.0F), 64.0F, 64.0F).doesDamage,
+          "uppercase X retains existing damage behavior");
+    const auto addEntity = [](auto& entities, const std::string& name,
+                              const Point2D& position, const CollisionComponent& collision) {
+        const EntityID id = entities.CreateEntity(name);
+        entities.template AddComponent<LocationComponent>(id, LocationComponent{position});
+        entities.template AddComponent<CollisionComponent>(id, collision);
+        return id;
+    };
+    const auto tick = [](View& view) {
+        Snapshot{}.Run(&view);
+        Movement{}.Run(&view);
+        Collisions{}.Run(&view);
+    };
+    CollisionComponent playerBox{};
+    playerBox.collisionBox = Rect(0.0F, 0.0F, 48.0F, 64.0F);
+    const Point2D spawn(300.0F, 0.0F);
+    for (bool rising : {false, true}) {
+        for (bool onRight : {false, true}) {
+            View view;
+            auto& entities = view.GetEntityManager();
+            addEntity(entities, "wall", Point2D(0.0F, rising ? 164.0F : 36.0F),
+                      MakeMapCollision('H', Rect(0.0F, 0.0F, 64.0F, 64.0F), 64.0F, 64.0F));
+            addEntity(entities, "tile x", Point2D(0.0F, 100.0F), spike);
+            const Point2D start(onRight ? 64.0F : -48.0F, rising ? 160.0F : 42.0F);
+            const Point2D velocity(onRight ? -4.0F : 4.0F, rising ? -12.0F : 8.0F);
+            const EntityID player = addEntity(entities, "player", start, playerBox);
+            entities.AddComponent<MovementComponent>(player, MovementComponent{velocity});
+            entities.AddComponent<RespawnComponent>(player, RespawnComponent{spawn});
+            tick(view);
+            const Point2D location = entities.GetComponent<LocationComponent>(player).loc;
+            const auto& contacts = entities.GetComponent<CollisionComponent>(player);
+            Check(location == Point2D(start.x, start.y + velocity.y),
+                  "wall slide beside spike preserves vertical motion and does not respawn");
+            Check(!contacts.onGround && !contacts.onCeiling,
+                  "spike beside wall creates neither invisible floor nor head blocker");
+            Check(onRight ? contacts.onLeftWall : contacts.onRightWall,
+                  "wall contact is still resolved next to spike");
+        }
+    }
+    const Point2D starts[] = {Point2D(8.0F, 40.0F), Point2D(8.0F, 160.0F),
+                              Point2D(70.0F, 110.0F)};
+    const Point2D velocities[] = {Point2D(0.0F, 10.0F), Point2D(0.0F, -12.0F),
+                                  Point2D(-12.0F, 0.0F)};
+    for (int side = 0; side < 3; ++side) {
+        View view;
+        auto& entities = view.GetEntityManager();
+        addEntity(entities, "tile x", Point2D(0.0F, 100.0F), spike);
+        const EntityID player = addEntity(entities, "player", starts[side], playerBox);
+        entities.AddComponent<MovementComponent>(player, MovementComponent{velocities[side]});
+        entities.AddComponent<RespawnComponent>(player, RespawnComponent{spawn});
+        tick(view);
+        Check(entities.GetComponent<LocationComponent>(player).loc == spawn,
+              "actual spike contact respawns player from every tested direction");
+        Check(entities.GetComponent<MovementComponent>(player).velocity == Point2D(),
+              "spike respawn clears velocity instead of trapping player");
+    }
+}
+
+//-----------------------------------------------------------------------
+/**
+ * @brief Checks diagonal landings at floor seams and movement after landing.
+ *
+ * Tests both travel directions, run/dash speeds, and tile creation orders
+ * with the player's actual inset collision box. Subsequent input frames
+ * verify that false wall contacts do not block walking or turning.
+ *
+ * Implemented with the help of AI.
+ */
+//-----------------------------------------------------------------------
+void TestLandingTileSeams() {
+    using namespace ECSEngine;
+    using View = TestEngineView<LocationComponent, MovementComponent, CollisionComponent,
+        GravityComponent, InputComponent, RespawnComponent, ScoreComponent,
+        CameraComponent, CameraShake, SpawnComponent>;
+    using Snapshot = CollisionLateSystem<LocationComponent, MovementComponent, CollisionComponent,
+        GravityComponent, InputComponent, RespawnComponent, ScoreComponent,
+        CameraComponent, CameraShake, SpawnComponent>;
+    using Movement = MovementSystem<LocationComponent, MovementComponent, CollisionComponent,
+        GravityComponent, InputComponent, RespawnComponent, ScoreComponent,
+        CameraComponent, CameraShake, SpawnComponent>;
+    using Collisions = CollisionSystem<LocationComponent, MovementComponent, CollisionComponent,
+        GravityComponent, InputComponent, RespawnComponent, ScoreComponent,
+        CameraComponent, CameraShake, SpawnComponent>;
+    using Input = InputSystem<LocationComponent, MovementComponent, CollisionComponent,
+        GravityComponent, InputComponent, RespawnComponent, ScoreComponent,
+        CameraComponent, CameraShake, SpawnComponent>;
+    using Gravity = GravitySystem<LocationComponent, MovementComponent, CollisionComponent,
+        GravityComponent, InputComponent, RespawnComponent, ScoreComponent,
+        CameraComponent, CameraShake, SpawnComponent>;
+    for (bool right : {false, true}) {
+        for (bool reverseOrder : {false, true}) {
+            for (float speed : {15.0F, 50.0F}) {
+                View view;
+                auto& entities = view.GetEntityManager();
+                const auto addFloor = [&](float x) {
+                    const EntityID tile = entities.CreateEntity("floor");
+                    entities.AddComponent<LocationComponent>(tile,
+                        LocationComponent{Point2D(x, 200.0F)});
+                    entities.AddComponent<CollisionComponent>(tile,
+                        MakeMapCollision('H', Rect(0.0F, 0.0F, 64.0F, 64.0F), 64.0F, 64.0F));
+                };
+                addFloor(reverseOrder ? 64.0F : 128.0F);
+                addFloor(reverseOrder ? 128.0F : 64.0F);
+                for (int column = -8; column < 9; ++column) {
+                    if (column != 1 && column != 2) addFloor(column * 64.0F);
+                }
+                const EntityID player = entities.CreateEntity("player");
+                const Point2D start(right ? 64.0F : 128.0F, 130.0F);
+                const float velocityX = right ? speed : -speed;
+                entities.AddComponent<LocationComponent>(player, LocationComponent{start});
+                entities.AddComponent<MovementComponent>(player,
+                    MovementComponent{Point2D(velocityX, 10.0F)});
+                CollisionComponent box{};
+                box.collisionBox = Rect(8.0F, 0.0F, 48.0F, 64.0F);
+                entities.AddComponent<CollisionComponent>(player, box);
+                entities.AddComponent<InputComponent>(player, InputComponent(player));
+                entities.AddComponent<GravityComponent>(player,
+                    GravityComponent(Point2D(0.0F, 2.0F)));
+
+                Snapshot{}.Run(&view);
+                Movement{}.Run(&view);
+                Collisions{}.Run(&view);
+                const auto& landed = entities.GetComponent<CollisionComponent>(player);
+                Check(entities.GetComponent<LocationComponent>(player).loc ==
+                          Point2D(start.x + velocityX, 136.0F),
+                      "diagonal floor-seam landing preserves x and snaps feet to floor");
+                Check(landed.onGround && !landed.onLeftWall && !landed.onRightWall,
+                      "floor-seam landing sets ground contact without false walls");
+                Check(entities.GetComponent<MovementComponent>(player).velocity.x == velocityX,
+                      "landing across a floor seam preserves sideways velocity");
+
+                for (int frame = 0; frame < 24; ++frame) {
+                    auto& input = entities.GetComponent<InputComponent>(player);
+                    input.keydown.reset();
+                    input.keydown[(frame < 12 ? right : !right) ? Key::Right : Key::Left] = true;
+                    Snapshot{}.Run(&view);
+                    Input{}.Run(&view);
+                    Gravity{}.Run(&view);
+                    Movement{}.Run(&view);
+                    Collisions{}.Run(&view);
+                    const auto& contact = entities.GetComponent<CollisionComponent>(player);
+                    Check(contact.onGround && !contact.onLeftWall && !contact.onRightWall,
+                          "walking and reversing over floor seams never creates wall flags");
+                    Check(entities.GetComponent<LocationComponent>(player).loc.y == 136.0F,
+                          "walking after landing does not embed player in floor");
+                }
+                const float finalX = entities.GetComponent<MovementComponent>(player).velocity.x;
+                Check(right ? finalX < 0.0F : finalX > 0.0F,
+                      "player can reverse after landing without jumping");
+            }
+        }
+    }
+}
+
 }  // namespace
 
 //-----------------------------------------------------------------------
@@ -596,6 +800,8 @@ int main(int argc, char* argv[]) {
     TestSpriteManager();
     TestScoreSystem();
     TestStarSettlingAndShake();
+    TestSpikeWallContacts();
+    TestLandingTileSeams();
 
     if (gFailures != 0) {
         std::cerr << gFailures << " check(s) failed\n";

@@ -103,6 +103,8 @@ public:
      * When T can be default-constructed, the old value is replaced with a
      * default value to release any resources it owned.
      *
+     * Implemented with the help of AI.
+     *
      * @param index Slot previously returned by Add.
      * @return None.
      */
@@ -133,9 +135,10 @@ public:
     /**
      * @brief Returns the component in a live slot.
      *
-     * The reference remains valid until the component is removed. Adding to a
-     * different storage may move that storage's components, so references to
-     * components of different types should not be held across Add calls.
+     * Removal or replacement of this component invalidates the reference.
+     * Adding another component of the same type may grow this storage's
+     * vector and invalidate all references into it. Other component types
+     * have separate storage and do not move this vector.
      *
      * @param index Slot previously returned by Add.
      * @return Reference to the stored component.
@@ -169,6 +172,8 @@ private:
      * Reuses the most recently freed slot when one exists; otherwise appends
      * a new slot. mCount tracks live slots rather than vector size, so it is
      * updated here rather than derived from mStorage.size().
+     *
+     * Implemented with the help of AI.
      *
      * @param component Component to copy or move into the chosen slot.
      * @return The slot the component occupies.

@@ -38,6 +38,19 @@ public:
         return name;
     }
 
+    //-------------------------------------------------------------------
+    /**
+     * @brief Advances spawn countdowns and creates stars for ready spawners.
+     *
+     * Records ids before creating entities, then re-fetches component references
+     * after creation because vector growth can invalidate them.
+     *
+     * Implemented with the help of AI.
+     *
+     * @param engine Borrowed view providing entity storage; no managers are retained.
+     * @return kContinue after updating each valid spawner's budget and timer.
+     */
+    //-------------------------------------------------------------------
     tSystemReturn Run(EngineView<Components...>* engine) override {
         EntityManager<Components...>& entities = engine->GetEntityManager();
 
@@ -118,6 +131,8 @@ public:
      * caller supplies the entity location (the top-left of a 64x64 tile-style
      * cell) and the initial velocity. The visual and collision boxes are inset
      * by 8 pixels so the star does not fill the whole cell.
+     *
+     * Implemented with the help of AI.
      *
      * @param entities Entity manager that will own the new star.
      * @param starTexture Registered sprite for the star.

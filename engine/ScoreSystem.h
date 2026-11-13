@@ -47,6 +47,8 @@ public:
      * Public so the core logic can be unit tested without constructing a
      * WindowManager or opening a window.
      *
+     * Implemented with the help of AI.
+     *
      * @param entities Entity manager holding the score and digit entities.
      * @return None.
      */
@@ -75,6 +77,8 @@ private:
      * ScoreComponent::digitID. Digits are filled from right to left so the
      * ones place is the last entity in the array. A digit entity that has been
      * removed or lacks a SpriteComponent is simply skipped.
+     *
+     * Implemented with the help of AI.
      *
      * @param entities Entity manager used to access the digit entities.
      * @param score Score component to read and display.
