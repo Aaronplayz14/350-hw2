@@ -28,7 +28,14 @@ public:
             GravityComponent& gravityComponent = entities.template GetComponent<GravityComponent>(id);
 			MovementComponent& movementComponent = entities.template GetComponent<MovementComponent>(id);
 
-			movementComponent.velocity += gravityComponent.acceleration;
+			// Falling should be faster than rising. This keeps Travis's
+			// acceleration value and only strengthens it on the way down.
+			Point2D acceleration = gravityComponent.acceleration;
+			if (acceleration.y > 0.0f && movementComponent.velocity.y > 0.0f) {
+				acceleration.y *= 1.6f;
+			}
+
+			movementComponent.velocity += acceleration;
         }
 
 		return kContinue;
