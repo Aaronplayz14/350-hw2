@@ -110,6 +110,7 @@ public:
                 entities.RemoveEntity(id);
             }
         }
+        RefreshPlayerWallContacts(entities);
         return kContinue;
     }
 
@@ -149,6 +150,52 @@ private:
         const LocationComponent& location =
             entities.template GetComponent<LocationComponent>(id);
         return collision.collisionBox + location.loc;
+    }
+
+    //-------------------------------------------------------------------
+    /**
+     * @brief Rebuilds player wall flags from actual contacts after separation.
+     *
+     * Snapping to a wall removes all penetration. Input then stops pushing
+     * horizontally, so overlap tests alone would lose contact on the next
+     * frame. Recognize touching faces with positive vertical overlap, without
+     * moving the player or treating floor edges and damage tiles as walls.
+     *
+     * @param entities Borrowed collision/location storage after pair resolution.
+     */
+    //-------------------------------------------------------------------
+    static void RefreshPlayerWallContacts(EntityManager<Components...>& entities) {
+        for (EntityID id = 0; id < entities.GetEntityCount(); ++id) {
+            if (!IsCollidable(entities, id) || entities.GetEntity(id)->GetName() != "player") {
+                continue;
+            }
+            CollisionComponent& playerCollision =
+                entities.template GetComponent<CollisionComponent>(id);
+            if (playerCollision.staticEntity) continue;
+            playerCollision.onLeftWall = 0;
+            playerCollision.onRightWall = 0;
+            const Rect playerBounds = WorldBounds(entities, id);
+            for (EntityID tile = 0; tile < entities.GetEntityCount(); ++tile) {
+                if (!IsCollidable(entities, tile)) continue;
+                const CollisionComponent& tileCollision =
+                    entities.template GetComponent<CollisionComponent>(tile);
+                if (!tileCollision.staticEntity || tileCollision.doesDamage) continue;
+                const Rect tileBounds = WorldBounds(entities, tile);
+                const float verticalOverlap =
+                    std::min(playerBounds.topLeft.y + playerBounds.height,
+                             tileBounds.topLeft.y + tileBounds.height) -
+                    std::max(playerBounds.topLeft.y, tileBounds.topLeft.y);
+                if (verticalOverlap <= kSideEpsilon) continue;
+                if (std::fabs(playerBounds.topLeft.x + playerBounds.width -
+                              tileBounds.topLeft.x) <= kSideEpsilon) {
+                    playerCollision.onRightWall = 1;
+                }
+                if (std::fabs(playerBounds.topLeft.x -
+                              (tileBounds.topLeft.x + tileBounds.width)) <= kSideEpsilon) {
+                    playerCollision.onLeftWall = 1;
+                }
+            }
+        }
     }
 
     //-------------------------------------------------------------------
