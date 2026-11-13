@@ -10,7 +10,38 @@ public:
         return name;
     }
 
-    tSystemReturn Run(EngineView<Components...>* engine) override { return kContinue; }
+    tSystemReturn Run(EngineView<Components...>* engine) override {
+        
+        EntityManager<Components...>& entities = engine->GetEntityManager();
+
+        for (auto it = entities.begin(); it != entities.end(); ++it) {
+
+            if (!it->IsValid()) {
+                continue;
+            }
+
+            const EntityID id = it->GetID();
+            if (!entities.template HasComponent<MovementComponent>(id)) {
+                continue;
+            }
+
+            MovementComponent& movementComponent = entities.template GetComponent<MovementComponent>(id);
+            LocationComponent& locationComponent = entities.template GetComponent<LocationComponent>(id);
+
+            locationComponent.loc += movementComponent.velocity;
+
+            if (entities.template HasComponent<CollisionComponent>(id)) {
+                CollisionComponent& collisionComponent = entities.template GetComponent<CollisionComponent>(id);
+                collisionComponent.onCeiling = 0;
+                collisionComponent.onGround = 0;
+                collisionComponent.onRightWall = 0;
+                collisionComponent.onLeftWall = 0;
+            }
+
+        }
+
+        return kContinue; 
+    }
 };
 
 }  // namespace ECSEngine

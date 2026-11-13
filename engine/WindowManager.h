@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <cassert>
 
 #include "MathUtil.h"
 #include <SFML/Graphics.hpp>
@@ -34,6 +35,8 @@ public:
 
 private:
     std::shared_ptr<sf::RenderWindow> mWindow;
+    Point2D mWorldCenter; // Center of the world in pixels
+	float mWorldUnitsPerPixel; // How many world units per pixel
 };
 
 }  // namespace ECSEngine
