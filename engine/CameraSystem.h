@@ -82,7 +82,15 @@ public:
                 // TEMP (Travis): SetWorldCenter expects the camera center in
                 // world coordinates. Keep that contract when adding the
                 // horizontal dead-zone and soft-follow behavior.
-                windowManager.SetWorldCenter(cameraComponent.position);
+                Point2D displayedPosition = cameraComponent.position;
+                if (entities.template HasComponent<CameraShake>(idCam)) {
+                    CameraShake& shake = entities.template GetComponent<CameraShake>(idCam);
+                    displayedPosition += shake.offset;
+                    if (--shake.frameLimit <= 0) {
+                        entities.template RemoveComponent<CameraShake>(idCam);
+                    }
+                }
+                windowManager.SetWorldCenter(displayedPosition);
             }
         }
         return kContinue; 

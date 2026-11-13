@@ -267,9 +267,8 @@ int main(int argc, char* argv[]) {
         std::cerr << "WARNING: could not load one or more sounds: " << error.what() << '\n';
     }
 
-    // Load the background layer first so it is drawn beneath the object layer.
-    // The level maps are reconstructed from the object-map example in the
-    // project requirements because the Canvas map files are not in the repo.
+    // Load the supplied harder level: the sky background first, then the
+    // world geometry so it is drawn on top and participates in collisions.
     ECSEngine::SpriteManager& sprites = engine.GetSpriteManager();
 
     // The star and spawner both come from the provided tile sheet. The star is
@@ -283,8 +282,8 @@ int main(int argc, char* argv[]) {
     MapInfo backgroundInfo;
     MapInfo objectInfo;
     try {
-        LoadMap(engine, gResourcePath, "map-background.txt", backgroundInfo, starSprite);
-        LoadMap(engine, gResourcePath, "map-objects.txt", objectInfo, starSprite);
+        LoadMap(engine, gResourcePath, "sky.map", backgroundInfo, starSprite);
+        LoadMap(engine, gResourcePath, "world.map", objectInfo, starSprite);
     } catch (const std::exception& error) {
         std::cerr << "WARNING: could not load the level maps: " << error.what() << '\n';
     }
