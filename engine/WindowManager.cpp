@@ -67,7 +67,7 @@ void WindowManager::SetWorldScale(float worldUnitsPerPixel) {
 }
 
 void WindowManager::SetWorldRect(const Rect& worldCameraRect) {
-    assert(worldCameraRect.width / worldCameraRect.height == mWindow->getSize().x / mWindow->getSize().y);
+    assert(worldCameraRect.width / worldCameraRect.height == static_cast<float>(mWindow->getSize().x) / static_cast<float>(mWindow->getSize().y));
     mWorldUnitsPerPixel = worldCameraRect.width / mWindow->getSize().x;
     mWorldCenter = Point2D(worldCameraRect.topLeft.x + worldCameraRect.width / 2.f,
                            worldCameraRect.topLeft.y + worldCameraRect.height / 2.f);
